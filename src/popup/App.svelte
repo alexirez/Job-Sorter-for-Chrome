@@ -5,6 +5,8 @@
   let progressText = "";
   let summary = "";
   let errorText = "";
+  let blockedPage = false;
+  const extensionName = chrome.runtime.getManifest().name;
 
   function handleMessage(message) {
     if (message.type === "MODEL_PROGRESS") {
@@ -15,6 +17,11 @@
 
   onMount(() => {
     chrome.runtime.onMessage.addListener(handleMessage);
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      if (!tab?.url || !/^https?:\/\//.test(tab.url)) {
+        blockedPage = true;
+      }
+    });
   });
   onDestroy(() => {
     chrome.runtime.onMessage.removeListener(handleMessage);
@@ -37,9 +44,17 @@
 
 <main>
   <h1>Job Sorter — AI test</h1>
-  <button on:click={summarize} disabled={status === "loading"}>
-    {status === "loading" ? "Working…" : "Summarize this page"}
-  </button>
+
+  {#if blockedPage}
+    <p class="error">
+      {extensionName} is blocked on this page — open a real
+      website (not chrome://, a new tab, or an extension page) and try again.
+    </p>
+  {:else}
+    <button on:click={summarize} disabled={status === "loading"}>
+      {status === "loading" ? "Working…" : "Summarize this page"}
+    </button>
+  {/if}
 
   {#if status === "loading"}
     <p class="progress">{progressText || "Starting…"}</p>
