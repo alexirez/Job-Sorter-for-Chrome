@@ -70,8 +70,13 @@
 </main>
 
 <style>
+  :global(html), :global(body) {
+    margin: 0;
+    padding: 0;
+  }
   main {
-    width: 320px;
+    width: 720px;
+    min-height: 500px;
     padding: 12px;
     font-family: system-ui, sans-serif;
   }
