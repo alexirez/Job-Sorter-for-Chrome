@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
 
   const STORAGE_KEY = 'selectedModel';
+  const REFRESH_LOCK_MS = 1800;
 
   let models = $state([]);
   let selectedModel = $state(null); // null = "None"
@@ -19,7 +20,6 @@
   }
 
   async function fetchModels() {
-    fetchingModels = true;
     error = '';
     try {
       const res = await fetch('http://localhost:11434/api/tags');
@@ -33,9 +33,25 @@
     } catch (e) {
       error = 'Could not reach Ollama. Is it running?';
       models = [];
-    } finally {
-      fetchingModels = false;
     }
+  }
+
+  async function loadModels() {
+    fetchingModels = true;
+    await fetchModels();
+    fetchingModels = false;
+  }
+
+  async function refreshModels() {
+    if (fetchingModels) return;
+    fetchingModels = true;
+    const start = Date.now();
+    await fetchModels();
+    const remaining = REFRESH_LOCK_MS - (Date.now() - start);
+    if (remaining > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remaining));
+    }
+    fetchingModels = false;
   }
 
   function handleChange(event) {
@@ -55,7 +71,7 @@
 
   onMount(async () => {
     await loadSelectedModel();
-    await fetchModels();
+    await loadModels();
   });
 </script>
 
@@ -64,8 +80,23 @@
     <div class="brand">
       <h1>Job Sorter</h1>
     </div>
-    <button class="icon-btn" onclick={openSettings} aria-label="Settings" title="Settings">
-      ⚙
+    <button class="icon-btn settings-btn" onclick={openSettings} aria-label="Settings" title="Settings">
+      <svg
+        class="gear-icon"
+        viewBox="0 0 24 24"
+        width="22"
+        height="22"
+        fill="currentColor"
+      >
+        <path fill-rule="evenodd" d="M12 5.6 A6.4 6.4 0 1 0 12 18.4 A6.4 6.4 0 1 0 12 5.6 Z M12 8.6 A3.4 3.4 0 1 0 12 15.4 A3.4 3.4 0 1 0 12 8.6 Z" />
+        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" />
+        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(51.43 12 12)" />
+        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(102.86 12 12)" />
+        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(154.29 12 12)" />
+        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(205.71 12 12)" />
+        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(257.14 12 12)" />
+        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(308.57 12 12)" />
+      </svg>
     </button>
   </header>
 
@@ -81,12 +112,26 @@
         </select>
         <button
           class="icon-btn refresh-btn"
-          onclick={fetchModels}
+          onclick={refreshModels}
           disabled={fetchingModels}
           aria-label="Refresh model list"
           title="Refresh model list"
         >
-          {fetchingModels ? '···' : '↻'}
+          <svg
+            class="refresh-icon"
+            class:spinning={fetchingModels}
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 12a9 9 0 1 1-3-6.7" />
+            <polyline points="21 3 21 9 15 9" />
+          </svg>
         </button>
       </div>
     </div>
@@ -175,6 +220,29 @@
     transform: none;
   }
 
+  .settings-btn {
+    background: transparent;
+    color: var(--paper);
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .settings-btn:hover {
+    transform: none;
+  }
+
+  .gear-icon {
+    display: block;
+    transition: transform 0.15s ease;
+  }
+
+  .settings-btn:hover .gear-icon {
+    transform: scale(1.15);
+  }
+
   .folder {
     background: var(--paper);
     border-radius: 6px;
@@ -220,6 +288,26 @@
     background: var(--ink-text);
     color: var(--paper);
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .refresh-icon {
+    display: block;
+  }
+
+  .refresh-icon.spinning {
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .note {
@@ -263,12 +351,22 @@
 
   @media (prefers-reduced-motion: reduce) {
     .icon-btn,
-    .stamp-btn {
+    .stamp-btn,
+    .refresh-icon.spinning {
+      transition: none;
+      animation: none;
+    }
+
+    .gear-icon {
       transition: none;
     }
+
     .icon-btn:hover,
     .stamp-btn:hover,
     .stamp-btn:active {
+      transform: none;
+    }
+    .settings-btn:hover .gear-icon {
       transform: none;
     }
   }
