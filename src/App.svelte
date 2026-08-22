@@ -84,8 +84,8 @@
       <svg
         class="gear-icon"
         viewBox="0 0 24 24"
-        width="22"
-        height="22"
+        width="48"
+        height="48"
         fill="currentColor"
       >
         <path fill-rule="evenodd" d="M12 5.6 A6.4 6.4 0 1 0 12 18.4 A6.4 6.4 0 1 0 12 5.6 Z M12 8.6 A3.4 3.4 0 1 0 12 15.4 A3.4 3.4 0 1 0 12 8.6 Z" />
@@ -223,8 +223,8 @@
   .settings-btn {
     background: transparent;
     color: var(--paper);
-    width: 34px;
-    height: 34px;
+    width: 42px;
+    height: 42px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -291,6 +291,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: transform 0.15s ease;
+  }
+
+  .refresh-btn:hover {
+    transform: scale(1.15);
   }
 
   .refresh-icon {
@@ -367,6 +372,9 @@
       transform: none;
     }
     .settings-btn:hover .gear-icon {
+      transform: none;
+    }
+    .refresh-btn:hover {
       transform: none;
     }
   }
