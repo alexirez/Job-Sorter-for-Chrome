@@ -1,5 +1,8 @@
 <script>
   import { onMount } from 'svelte';
+  import questionMarkIcon from './assets/icons/question-mark.svg?raw';
+  import gearIcon from './assets/icons/gear-icon.svg?raw';
+  import refreshIcon from './assets/icons/refresh-icon.svg?raw';
 
   const STORAGE_KEY = 'selectedModel';
   const PORT_STORAGE_KEY = 'ollamaPort';
@@ -8,6 +11,7 @@
   let models = $state([]);
   let selectedModel = $state(null); // null = "None"
   let fetchingModels = $state(false);
+  let loadingModel = $state(false);
   let error = $state('');
   let ollamaPort = $state(11434);
 
@@ -19,6 +23,23 @@
   async function saveSelectedModel(name) {
     selectedModel = name;
     await chrome.storage.local.set({ [STORAGE_KEY]: name });
+  }
+
+  async function loadModel() {
+    if (!selectedModel || loadingModel) return;
+    loadingModel = true;
+    try {
+      const res = await fetch(`http://localhost:${ollamaPort}/api/chat`, {
+        method: 'POST',
+        body: JSON.stringify({ model: selectedModel, messages: [] })
+      });
+      if (!res.ok) throw new Error(`Ollama returned ${res.status}`);
+      console.log(`[Job Sorter] Loaded ${selectedModel} into memory`);
+    } catch (e) {
+      console.error(`[Job Sorter] Failed to load ${selectedModel}`, e);
+    } finally {
+      loadingModel = false;
+    }
   }
 
   async function fetchModels() {
@@ -86,22 +107,7 @@
     <header class="topbar">
       <h1>Job Sorter</h1>
       <button class="icon-btn settings-btn" onclick={openSettings} aria-label="Settings" title="Settings">
-        <svg
-          class="gear-icon"
-          viewBox="0 0 24 24"
-          width="48"
-          height="48"
-          fill="currentColor"
-        >
-          <path fill-rule="evenodd" d="M12 5.6 A6.4 6.4 0 1 0 12 18.4 A6.4 6.4 0 1 0 12 5.6 Z M12 8.6 A3.4 3.4 0 1 0 12 15.4 A3.4 3.4 0 1 0 12 8.6 Z" />
-          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" />
-          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(51.43 12 12)" />
-          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(102.86 12 12)" />
-          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(154.29 12 12)" />
-          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(205.71 12 12)" />
-          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(257.14 12 12)" />
-          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(308.57 12 12)" />
-        </svg>
+        {@html gearIcon}
       </button>
     </header>
 
@@ -116,26 +122,13 @@
         </select>
         <button
           class="icon-btn refresh-btn"
+          class:spinning={fetchingModels}
           onclick={refreshModels}
           disabled={fetchingModels}
           aria-label="Refresh model list"
           title="Refresh model list"
         >
-          <svg
-            class="refresh-icon"
-            class:spinning={fetchingModels}
-            viewBox="0 0 24 24"
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M21 12a9 9 0 1 1-3-6.7" />
-            <polyline points="21 3 21 9 15 9" />
-          </svg>
+          {@html refreshIcon}
         </button>
       </div>
     </div>
@@ -145,6 +138,13 @@
     {:else}
       <p class="note">Using Ollama on localhost:{ollamaPort}</p>
     {/if}
+
+    <div class="load-row">
+      <button class="load-btn" onclick={loadModel} disabled={!selectedModel || loadingModel}>
+        {loadingModel ? 'Loading…' : 'Load Selected'}
+      </button>
+      <span class="icon-btn help-btn" title="...">{@html questionMarkIcon}</span>
+   </div>
 
     <button class="stamp-btn" onclick={viewPostings}>View Postings</button>
 
