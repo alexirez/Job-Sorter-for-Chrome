@@ -29,6 +29,8 @@
       const data = await res.json();
       models = data.models ?? [];
 
+      console.log(`Ollama connected successfully on port ${ollamaPort}`);
+
       if (selectedModel && !models.some((m) => m.name === selectedModel)) {
         await saveSelectedModel(null);
       }
@@ -80,31 +82,29 @@
 </script>
 
 <div class="popup">
-  <header class="topbar">
-    <div class="brand">
-      <h1>Job Sorter</h1>
-    </div>
-    <button class="icon-btn settings-btn" onclick={openSettings} aria-label="Settings" title="Settings">
-      <svg
-        class="gear-icon"
-        viewBox="0 0 24 24"
-        width="48"
-        height="48"
-        fill="currentColor"
-      >
-        <path fill-rule="evenodd" d="M12 5.6 A6.4 6.4 0 1 0 12 18.4 A6.4 6.4 0 1 0 12 5.6 Z M12 8.6 A3.4 3.4 0 1 0 12 15.4 A3.4 3.4 0 1 0 12 8.6 Z" />
-        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" />
-        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(51.43 12 12)" />
-        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(102.86 12 12)" />
-        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(154.29 12 12)" />
-        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(205.71 12 12)" />
-        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(257.14 12 12)" />
-        <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(308.57 12 12)" />
-      </svg>
-    </button>
-  </header>
-
   <div class="folder">
+    <header class="topbar">
+      <h1>Job Sorter</h1>
+      <button class="icon-btn settings-btn" onclick={openSettings} aria-label="Settings" title="Settings">
+        <svg
+          class="gear-icon"
+          viewBox="0 0 24 24"
+          width="48"
+          height="48"
+          fill="currentColor"
+        >
+          <path fill-rule="evenodd" d="M12 5.6 A6.4 6.4 0 1 0 12 18.4 A6.4 6.4 0 1 0 12 5.6 Z M12 8.6 A3.4 3.4 0 1 0 12 15.4 A3.4 3.4 0 1 0 12 8.6 Z" />
+          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" />
+          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(51.43 12 12)" />
+          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(102.86 12 12)" />
+          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(154.29 12 12)" />
+          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(205.71 12 12)" />
+          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(257.14 12 12)" />
+          <path d="M9.58,6.0 L10.85,2.85 Q10.7,2.6 11.05,2.6 L12.95,2.6 Q13.3,2.6 13.45,2.85 L14.42,6.0 Z" transform="rotate(308.57 12 12)" />
+        </svg>
+      </button>
+    </header>
+
     <div class="field">
       <label for="model-select">Selected model</label>
       <div class="field-row">
@@ -145,9 +145,10 @@
     {:else}
       <p class="note">Using Ollama on localhost:{ollamaPort}</p>
     {/if}
-  </div>
 
-  <button class="stamp-btn" onclick={viewPostings}>View Postings</button>
+    <button class="stamp-btn" onclick={viewPostings}>View Postings</button>
+
+  </div>
 </div>
 
 <style>
@@ -186,19 +187,13 @@
     align-items: flex-start;
   }
 
-  .brand {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .brand h1 {
+  .topbar h1 {
     margin: 0;
     font-family: var(--font-mono);
     font-size: 1.6rem;
     font-weight: 700;
     letter-spacing: 0.02em;
-    color: var(--paper);
+    color: var(--ink-text);
   }
 
   .icon-btn {
@@ -226,7 +221,7 @@
 
   .settings-btn {
     background: transparent;
-    color: var(--paper);
+    color: var(--ink-text);
     width: 42px;
     height: 42px;
     display: flex;
@@ -255,6 +250,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex: 1;
   }
 
   .field {
