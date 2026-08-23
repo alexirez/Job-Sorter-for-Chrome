@@ -1,4 +1,4 @@
-<svg class="question-mark-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+<svg class="question-mark-icon" viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
    <path d="M8.4 9.2 C8.4 6.1 10.1 4.3 12 4.3 C13.9 4.3 15.6 5.9 15.6 8.1 C15.6 10.1 14.2 11 12.8 11.8 C12.2 12.15 12 12.7 12 13.5" />
    <circle cx="12" cy="17.3" r="1.7" fill="currentColor" stroke="none" />
  </svg>

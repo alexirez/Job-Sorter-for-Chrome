@@ -136,7 +136,7 @@
     {#if error}
       <p class="note error">⚠ Failed to connect to Ollama on localhost:{ollamaPort}</p>
     {:else}
-      <p class="note">Using Ollama on localhost:{ollamaPort}</p>
+      <p class="note">Using Ollama on <span style="text-decoration: underline;">localhost:{ollamaPort}</span></p>
     {/if}
 
     <div class="load-row">
@@ -145,7 +145,9 @@
       </button>
       <button
         class="icon-btn help-btn"
-        title="AI features require loading the model into memory first."
+        title="AI features require loading the model into memory first.
+        Depending on model size, this can take 5-10 minutes (~5GB model)
+        or more for larger models. Larger models are more accurate."
         aria-label="Why load the model?"
       >
         {@html questionMarkIcon}
