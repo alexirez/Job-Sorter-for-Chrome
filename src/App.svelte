@@ -2,12 +2,14 @@
   import { onMount } from 'svelte';
 
   const STORAGE_KEY = 'selectedModel';
+  const PORT_STORAGE_KEY = 'ollamaPort';
   const REFRESH_LOCK_MS = 1800;
 
   let models = $state([]);
   let selectedModel = $state(null); // null = "None"
   let fetchingModels = $state(false);
   let error = $state('');
+  let ollamaPort = $state(11434);
 
   async function loadSelectedModel() {
     const result = await chrome.storage.local.get(STORAGE_KEY);
@@ -22,7 +24,7 @@
   async function fetchModels() {
     error = '';
     try {
-      const res = await fetch('http://localhost:11434/api/tags');
+      const res = await fetch(`http://localhost:${ollamaPort}/api/tags`);
       if (!res.ok) throw new Error(`Ollama returned ${res.status}`);
       const data = await res.json();
       models = data.models ?? [];
@@ -31,7 +33,7 @@
         await saveSelectedModel(null);
       }
     } catch (e) {
-      error = 'Could not reach Ollama. Is it running?';
+      error = `Failed to connect to Ollama on localhost:${ollamaPort}`;
       models = [];
     }
   }
@@ -71,6 +73,8 @@
 
   onMount(async () => {
     await loadSelectedModel();
+    const portResult = await chrome.storage.local.get(PORT_STORAGE_KEY);
+    ollamaPort = portResult[PORT_STORAGE_KEY] ?? 11434;
     await loadModels();
   });
 </script>
@@ -102,7 +106,7 @@
 
   <div class="folder">
     <div class="field">
-      <label for="model-select">Analyst model</label>
+      <label for="model-select">Selected model</label>
       <div class="field-row">
         <select id="model-select" value={selectedModel ?? ''} onchange={handleChange}>
           <option value="">None</option>
@@ -137,9 +141,9 @@
     </div>
 
     {#if error}
-      <p class="note error">⚠ {error}</p>
+      <p class="note error">⚠ Failed to connect to Ollama on localhost:{ollamaPort}</p>
     {:else}
-      <p class="note">Local inference via Ollama · localhost:11434</p>
+      <p class="note">Using Ollama on localhost:{ollamaPort}</p>
     {/if}
   </div>
 
