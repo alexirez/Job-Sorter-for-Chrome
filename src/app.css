@@ -1,4 +1,5 @@
 html, body {
+  background: var(--frame);
   margin: 0;
   padding: 0;
   width: 660px;
@@ -7,6 +8,7 @@ html, body {
 
 :root {
   --ink: #1b1e24;
+  --frame: #9b968a;
   --paper: #ece6d8;
   --paper-line: #dcd3be;
   --stamp-red: #b23a2f;
@@ -17,14 +19,16 @@ html, body {
 }
 
 .popup {
-  background: var(--ink);
-  padding: 20px;
+  background: var(--frame);
+  padding: 4px;
   box-sizing: border-box;
   min-height: 520px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   font-family: var(--font-sans);
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 .topbar {
