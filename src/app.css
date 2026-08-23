@@ -1,0 +1,226 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 660px;
+  min-height: 520px;
+}
+
+:root {
+  --ink: #1b1e24;
+  --paper: #ece6d8;
+  --paper-line: #dcd3be;
+  --stamp-red: #b23a2f;
+  --ink-text: #262220;
+  --muted: #6b6255;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+.popup {
+  background: var(--ink);
+  padding: 20px;
+  box-sizing: border-box;
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: var(--font-sans);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-text);
+}
+
+.icon-btn {
+  font-size: 1.1rem;
+  line-height: 1;
+  background: var(--paper);
+  color: var(--ink);
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.icon-btn:hover {
+  transform: rotate(8deg);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
+
+.settings-btn {
+  background: transparent;
+  color: var(--ink-text);
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-btn:hover {
+  transform: none;
+}
+
+.gear-icon {
+  display: block;
+  transition: transform 0.15s ease;
+}
+
+.settings-btn:hover .gear-icon {
+  transform: scale(1.15);
+}
+
+.folder {
+  background: var(--paper);
+  border-radius: 6px;
+  padding: 18px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+select {
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  color: var(--ink-text);
+  background: #fff;
+  border: 2px solid var(--ink-text);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.refresh-btn {
+  background: var(--ink-text);
+  color: var(--paper);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.refresh-btn:hover {
+  transform: scale(1.15);
+}
+
+.refresh-icon {
+  display: block;
+}
+
+.refresh-icon.spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.note {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.note.error {
+  color: var(--stamp-red);
+}
+
+.stamp-btn {
+  align-self: center;
+  margin-top: auto;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--stamp-red);
+  background: transparent;
+  border: 3px double var(--stamp-red);
+  border-radius: 6px;
+  padding: 12px 32px;
+  cursor: pointer;
+  transform: rotate(-1deg);
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.stamp-btn:hover {
+  transform: rotate(0deg);
+  background: var(--stamp-red);
+  color: var(--paper);
+}
+
+.stamp-btn:active {
+  transform: rotate(0deg) scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn,
+  .stamp-btn,
+  .refresh-icon.spinning {
+    transition: none;
+    animation: none;
+  }
+
+  .gear-icon {
+    transition: none;
+  }
+
+  .icon-btn:hover,
+  .stamp-btn:hover,
+  .stamp-btn:active {
+    transform: none;
+  }
+  .settings-btn:hover .gear-icon {
+    transform: none;
+  }
+  .refresh-btn:hover {
+    transform: none;
+  }
+}
