@@ -143,7 +143,13 @@
       <button class="load-btn" onclick={loadModel} disabled={!selectedModel || loadingModel}>
         {loadingModel ? 'Loading…' : 'Load Selected'}
       </button>
-      <span class="icon-btn help-btn" title="...">{@html questionMarkIcon}</span>
+      <button
+        class="icon-btn help-btn"
+        title="AI features require loading the model into memory first."
+        aria-label="Why load the model?"
+      >
+        {@html questionMarkIcon}
+      </button>
    </div>
 
     <button class="stamp-btn" onclick={viewPostings}>View Postings</button>

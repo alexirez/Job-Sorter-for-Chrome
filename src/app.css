@@ -132,6 +132,11 @@ select {
   border: 2px solid var(--ink-text);
   border-radius: 4px;
   padding: 8px 10px;
+  transition: transform 0.15s ease;
+}
+
+select:hover {
+  transform: scale(1.04);
 }
 
 .refresh-btn {
@@ -174,6 +179,11 @@ select {
   border-radius: 4px;
   padding: 8px 14px;
   cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.load-btn:hover:not(:disabled) {
+  transform: scale(1.08);
 }
 
 .load-btn:disabled {
@@ -186,6 +196,22 @@ select {
   width: 22px;
   height: 22px;
   font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.help-btn:hover {
+  transform: none;
+}
+
+.question-mark-icon {
+  display: block;
+  transition: transform 0.15s ease;
+}
+
+.help-btn:hover .question-mark-icon {
+  transform: scale(1.2);
 }
 
 @keyframes spin {
@@ -222,12 +248,12 @@ select {
   border-radius: 6px;
   padding: 12px 32px;
   cursor: pointer;
-  transform: rotate(-1deg);
+  transform: rotate(0deg);
   transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .stamp-btn:hover {
-  transform: rotate(0deg);
+  transform: rotate(0deg) scale(1.08);
   background: var(--stamp-red);
   color: var(--paper);
 }
@@ -248,6 +274,12 @@ select {
     transition: none;
   }
 
+  select,
+    .load-btn,
+    .question-mark-icon {
+      transition: none;
+    }
+
   .icon-btn:hover,
   .stamp-btn:hover,
   .stamp-btn:active {
@@ -259,4 +291,11 @@ select {
   .refresh-btn:hover {
     transform: none;
   }
+  select:hover,
+    .load-btn:hover {
+      transform: none;
+    }
+    .help-btn:hover .question-mark-icon {
+      transform: none;
+    }
 }
