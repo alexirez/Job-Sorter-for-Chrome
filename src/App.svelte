@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { fly } from 'svelte/transition';
   import questionMarkIcon from './assets/icons/question-mark.svg?raw';
   import gearIcon from './assets/icons/gear-icon.svg?raw';
   import refreshIcon from './assets/icons/refresh-icon.svg?raw';
@@ -12,6 +13,8 @@
   let selectedModel = $state(null); // null = "None"
   let fetchingModels = $state(false);
   let loadingModel = $state(false);
+  let loadError = $state('');
+  let loadErrorTimeout;
   let error = $state('');
   let ollamaPort = $state(11434);
 
@@ -28,6 +31,8 @@
   async function loadModel() {
     if (!selectedModel || loadingModel) return;
     loadingModel = true;
+    loadError = '';
+    clearTimeout(loadErrorTimeout);
     try {
       const res = await fetch(`http://localhost:${ollamaPort}/api/chat`, {
         method: 'POST',
@@ -37,6 +42,10 @@
       console.log(`[Job Sorter] Loaded ${selectedModel} into memory`);
     } catch (e) {
       console.error(`[Job Sorter] Failed to load ${selectedModel}`, e);
+      loadError = e.status === undefined
+          ? `Couldn't load ${selectedModel}.\nMake sure Ollama is running and OLLAMA_ORIGINS allows this extension.`
+          : 'An error occurred.';
+      loadErrorTimeout = setTimeout(() => (loadError = ''), 4000);
     } finally {
       loadingModel = false;
     }
@@ -140,19 +149,26 @@
     {/if}
 
     <div class="load-row">
-      <button class="load-btn" onclick={loadModel} disabled={!selectedModel || loadingModel}>
-        {loadingModel ? 'Loading…' : 'Load Selected'}
-      </button>
-      <button
-        class="icon-btn help-btn"
-        title="AI features require loading the model into memory first.
-        Depending on model size, this can take 5-10 minutes (~5GB model)
-        or more for larger models. Larger models are more accurate."
-        aria-label="Why load the model?"
-      >
-        {@html questionMarkIcon}
-      </button>
-   </div>
+      <div class="load-wrap">
+        <button class="load-btn" onclick={loadModel} disabled={!selectedModel || loadingModel}>
+          {loadingModel ? 'Loading…' : 'Load Selected'}
+        </button>
+        {#if loadError}
+          <div class="error-bubble" transition:fly={{ y: 8, duration: 150 }}>
+            {loadError}
+          </div>
+        {/if}
+      </div>
+        <button
+          class="icon-btn help-btn"
+          title="AI features require loading the model into memory first.
+          Depending on model size, this can take 5-10 minutes (~5GB model)
+          or more for larger models. Larger models are more accurate."
+          aria-label="Why load the model?"
+        >
+          {@html questionMarkIcon}
+        </button>
+    </div>
 
     <button class="stamp-btn" onclick={viewPostings}>View Postings</button>
 
