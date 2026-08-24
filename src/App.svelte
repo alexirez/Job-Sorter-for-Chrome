@@ -17,6 +17,7 @@
   let loadErrorTimeout;
   let error = $state('');
   let ollamaPort = $state(11434);
+  let showHelp = $state(false);
 
   async function loadSelectedModel() {
     const result = await chrome.storage.local.get(STORAGE_KEY);
@@ -208,15 +209,28 @@
           </div>
         {/if}
       </div>
-        <button
-          class="icon-btn help-btn"
-          title="AI features require loading the model into memory first.
-          Depending on model size, this can take several minutes.
-          The first load will take much longer than usual (5-10 minutes for ~5GB models)"
-          aria-label="Why load the model?"
-        >
-          {@html questionMarkIcon}
-        </button>
+        <div class="help-wrap">
+          <button
+            class="icon-btn help-btn"
+            onmouseenter={() => (showHelp = true)}
+            onmouseleave={() => (showHelp = false)}
+            onfocus={() => (showHelp = true)}
+            onblur={() => (showHelp = false)}
+            aria-label="Why load the model?"
+            aria-describedby="help-tooltip"
+          >
+            {@html questionMarkIcon}
+          </button>
+          {#if showHelp}
+            <div class="help-tooltip" id="help-tooltip" role="tooltip" transition:fly={{ y: 8, duration: 150 }}>
+              <p>AI features require loading the model into memory first.</p>
+              <ul>
+                <li>Depending on model size, this can take several minutes.</li>
+                <li>The first load will take much longer than usual (5-10 minutes for ~5GB models).</li>
+              </ul>
+            </div>
+          {/if}
+        </div>
     </div>
 
     <button class="stamp-btn" onclick={viewPostings}>View Postings</button>
