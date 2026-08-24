@@ -12,7 +12,7 @@
   let models = $state([]);
   let selectedModel = $state(null); // null = "None"
   let fetchingModels = $state(false);
-  let loadingModel = $state(false);
+  let loadingStatus = $state(null); // null | 'loaded' | 'loading' | 'unloading'
   let loadError = $state('');
   let loadErrorTimeout;
   let error = $state('');
@@ -29,8 +29,8 @@
   }
 
   async function loadModel() {
-    if (!selectedModel || loadingModel) return;
-    loadingModel = true;
+    if (!selectedModel || loadingStatus === 'loading' || loadingStatus === 'unloading') return;
+    loadingStatus = 'loading';
     loadError = '';
     clearTimeout(loadErrorTimeout);
     try {
@@ -40,15 +40,40 @@
       });
       if (!res.ok) throw new Error(`Ollama returned ${res.status}`);
       console.log(`[Job Sorter] Loaded ${selectedModel} into memory`);
+      loadingStatus = 'loaded';
     } catch (e) {
       console.error(`[Job Sorter] Failed to load ${selectedModel}`, e);
       loadError = e.status === undefined
           ? `Couldn't load ${selectedModel}.\nMake sure Ollama is running and OLLAMA_ORIGINS allows this extension.`
           : 'An error occurred.';
       loadErrorTimeout = setTimeout(() => (loadError = ''), 4000);
-    } finally {
-      loadingModel = false;
+      
     }
+  }
+
+  async function unloadModel() {
+    if (!selectedModel || loadingStatus === 'loading' || loadingStatus === 'unloading') return;
+    loadingStatus = 'unloading';
+    loadError = '';
+    clearTimeout(loadErrorTimeout);
+    try {
+      const res = await fetch(`http://localhost:${ollamaPort}/api/chat`, {
+        method: 'POST',
+        body: JSON.stringify({ model: selectedModel, messages: [], keep_alive: 0 })
+      });
+      if (!res.ok) throw new Error(`Ollama returned ${res.status}`);
+      console.log(`[Job Sorter] Unloaded ${selectedModel} from memory`);
+      loadingStatus = null;
+    } catch (e) {
+      console.error(`[Job Sorter] Failed to unload ${selectedModel}`, e);
+      loadError = 'An error occurred.';
+      loadErrorTimeout = setTimeout(() => (loadError = ''), 4000);
+      loadingStatus = 'loaded';
+    }
+  }
+
+  function handleLoadClick() {
+    loadingStatus === 'loaded' ? unloadModel() : loadModel();
   }
 
   async function fetchModels() {
@@ -90,7 +115,22 @@
 
   function handleChange(event) {
     const value = event.target.value;
-    saveSelectedModel(value === '' ? null : value);
+    saveSelectedModel(value === '' ? null : value).then(checkModelLoaded);
+  }
+
+  async function checkModelLoaded() {
+    if (!selectedModel) {
+      loadingStatus = null;
+      return;
+    }
+    try {
+      const res = await fetch(`http://localhost:${ollamaPort}/api/ps`);
+      if (!res.ok) throw new Error(`Ollama returned ${res.status}`);
+      const data = await res.json();
+      loadingStatus = (data.models ?? []).some((m) => m.name === selectedModel) ? 'loaded' : null;
+    } catch (e) {
+      loadingStatus = null;
+    }
   }
 
   function openSettings() {
@@ -108,6 +148,7 @@
     const portResult = await chrome.storage.local.get(PORT_STORAGE_KEY);
     ollamaPort = portResult[PORT_STORAGE_KEY] ?? 11434;
     await loadModels();
+    await checkModelLoaded();
   });
 </script>
 
@@ -150,8 +191,16 @@
 
     <div class="load-row">
       <div class="load-wrap">
-        <button class="load-btn" onclick={loadModel} disabled={!selectedModel || loadingModel}>
-          {loadingModel ? 'Loading…' : 'Load Selected'}
+        <button class="load-btn" onclick={handleLoadClick} disabled={!selectedModel || loadingStatus === 'loading' || loadingStatus === 'unloading'}>
+        {#if loadingStatus === 'loading'}
+          Loading<span class="dots"><span>.</span><span>.</span><span>.</span></span>
+        {:else if loadingStatus === 'unloading'}
+          Unloading<span class="dots"><span>.</span><span>.</span><span>.</span></span>
+        {:else if loadingStatus === 'loaded'}
+          Unload Selected
+        {:else}
+          Load Selected
+        {/if}
         </button>
         {#if loadError}
           <div class="error-bubble" transition:fly={{ y: 8, duration: 150 }}>
@@ -162,8 +211,8 @@
         <button
           class="icon-btn help-btn"
           title="AI features require loading the model into memory first.
-          Depending on model size, this can take 5-10 minutes (~5GB model)
-          or more for larger models. Larger models are more accurate."
+          Depending on model size, this can take several minutes.
+          The first load will take much longer than usual (5-10 minutes for ~5GB models)"
           aria-label="Why load the model?"
         >
           {@html questionMarkIcon}
