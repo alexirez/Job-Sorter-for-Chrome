@@ -1,6 +1,44 @@
+import { buildJobId, JOB_STATUS } from './types.js';
+
 const ADZUNA_APP_ID = import.meta.env.VITE_ADZUNA_APP_ID;
 const ADZUNA_APP_KEY = import.meta.env.VITE_ADZUNA_APP_KEY;
 const BASE_URL = 'https://api.adzuna.com/v1/api/jobs';
+
+/**
+ * Converts one raw Adzuna result into NormalizedJob shape.
+ * @returns {import('./types.js').NormalizedJob}
+ */
+function normalizeAdzunaJob(raw) {
+  const now = new Date().toISOString();
+
+  return {
+    id: buildJobId('adzuna', raw.id),
+    source: 'adzuna',
+    sourceId: raw.id,
+
+    title: raw.title,
+    company: raw.company?.display_name ?? null,
+    location: raw.location?.display_name ?? null,
+    remote: null, // Adzuna doesn't expose this explicitly
+    description: raw.description ?? null, // excerpt, not full text
+    employmentType: raw.contract_time ?? null, // e.g. "full_time", often missing
+
+    salaryMin: raw.salary_min ?? null,
+    salaryMax: raw.salary_max ?? null,
+    salaryCurrency: raw.salary_min != null ? 'USD' : null, // Adzuna doesn't return currency explicitly; adjust if you query non-US
+
+    url: raw.redirect_url,
+    postedAt: raw.created ?? null,
+    fetchedAt: now,
+
+    status: JOB_STATUS.NEW,
+    filteredOutAt: null,
+    shortlistedAt: null,
+    appliedAt: null,
+
+    raw: JSON.stringify(raw)
+  };
+}
 
 /**
  * Fetch a single page of postings (max 50 per Adzuna's limit).
@@ -49,5 +87,5 @@ export async function fetchJobs({ country, keywords, location, desiredCount = 50
     if (allResults.length >= data.count) break;
   }
 
-  return allResults.slice(0, desiredCount);
+  return allResults.slice(0, desiredCount).map(normalizeAdzunaJob);
 }
