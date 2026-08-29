@@ -8,6 +8,7 @@
     "dev": "vite build --watch"
   },
   "devDependencies": {
+    "@crxjs/vite-plugin": "^2.7.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "svelte": "^5.0.0",
     "vite": "^8.2.2"

@@ -7,8 +7,13 @@
     "default_popup": "dist/popup.html",
     "default_title": "Job Sorter"
   },
+  "background": {
+    "service_worker": "src/background/index.js",
+    "type": "module"
+  },
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [
-    "http://localhost:11434/*"
+    "http://localhost:11434/*",
+    "https://api.adzuna.com/*"
   ]
 }
