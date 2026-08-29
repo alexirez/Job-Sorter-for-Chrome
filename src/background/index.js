@@ -1,7 +1,7 @@
 // temporary test
 
 import { fetchJobs } from '../sources/adzuna.js';
-import { upsertJob, getJobsByStatus } from './db/db.js';
+import { upsertJob, getJobsByStatus } from './db/dbClient.js';
 
 async function testPipeline() {
   const jobs = await fetchJobs({

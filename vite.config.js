@@ -3,6 +3,8 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { crx } from '@crxjs/vite-plugin';
 import manifest from './manifest.json' with { type: 'json' };
 
+const isWatchMode = process.argv.includes('--watch');
+
 export default defineConfig({
   base: './',
   plugins: [
@@ -12,10 +14,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      input: 'popup.html'
+      input: {
+        offscreen: 'src/offscreen/offscreen.html'
+      }
     },
-    watch: {
-      exclude: ['dist/**', 'node_modules/**']
-    }
+    watch: isWatchMode ? { exclude: ['dist/**', 'node_modules/**'] } : null
   }
 });
