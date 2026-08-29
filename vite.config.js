@@ -13,6 +13,9 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       input: 'popup.html'
+    },
+    watch: {
+      exclude: ['dist/**', 'node_modules/**']
     }
   }
 });

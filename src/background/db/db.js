@@ -1,6 +1,6 @@
-import SQLiteESMFactory from 'wa-sqlite/dist/wa-sqlite-async.mjs';
+import SQLiteESMFactory from 'wa-sqlite/dist/wa-sqlite.mjs';
 import * as SQLite from 'wa-sqlite';
-import { OPFSCoopSyncVFS } from 'wa-sqlite/src/examples/OPFSCoopSyncVFS.js';
+import { AccessHandlePoolVFS } from 'wa-sqlite/src/examples/AccessHandlePoolVFS.js';
 import { CREATE_JOBS_TABLE } from './schema.js';
 
 let sqlite3 = null;
@@ -13,7 +13,8 @@ export async function initDB() {
   const module = await SQLiteESMFactory();
   sqlite3 = SQLite.Factory(module);
 
-  const vfs = await OPFSCoopSyncVFS.create('job-sorter-vfs', module);
+  const vfs = new AccessHandlePoolVFS('/job-sorter-vfs');
+  await vfs.isReady;
   sqlite3.vfs_register(vfs, true);
 
   db = await sqlite3.open_v2('jobs.db');
