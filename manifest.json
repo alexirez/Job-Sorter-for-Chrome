@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Analyzes job postings against your qualifications and auto-fills structured data using a local LLM.",
   "action": {
-    "default_popup": "dist/popup.html",
+    "default_popup": "popup.html",
     "default_title": "Job Sorter"
   },
   "background": {
