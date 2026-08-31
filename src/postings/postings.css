@@ -81,9 +81,6 @@
   background: var(--border-soft);
   transition: transform 0.15s ease;
 }
-.filter-btn.active {
-  background: var(--border-strong);
-}
 .filter-btn:hover {
   background: var(--border-strong);
   transform: scale(1.25)
