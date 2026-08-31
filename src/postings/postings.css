@@ -27,6 +27,9 @@
   z-index: 10;
   background: #eef1f4;
   padding-top: 12px;
+  display: flex;
+  align-items: center;
+  height: 44px;
 }
 .job-list {
   max-height: calc(100vh - 220px);
@@ -83,7 +86,7 @@
 }
 .filter-btn:hover {
   background: var(--border-strong);
-  transform: scale(1.25)
+  transform: scale(1.2)
 }
 .filter-btn :global(svg) {
   transition: transform 0.15s ease;
