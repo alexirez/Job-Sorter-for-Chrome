@@ -247,7 +247,16 @@
   }
 
   .status-tabs {
-    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #eef1f4;
+    padding-top: 12px;
+  }
+
+  .job-list {
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
   }
   .status-tab {
     padding: 8px 16px;
@@ -258,11 +267,17 @@
     font-size: 13px;
     color: var(--ink-muted);
     cursor: pointer;
+    transition: font-size 0.15s ease;
   }
   .status-tab.active {
     background: var(--paper);
     font-weight: 600;
     color: var(--ink);
+  }
+
+  .status-tab:hover {
+    color: var(--ink);
+    font-size: 14.2px;
   }
 
   .dossier-panel {
