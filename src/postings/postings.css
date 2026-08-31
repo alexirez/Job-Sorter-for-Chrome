@@ -76,10 +76,23 @@
   background: transparent;
   cursor: pointer;
 }
-.filter-btn.active,
-.filter-btn:hover {
+.filter-btn {
   border-color: var(--border-strong);
   background: var(--border-soft);
+  transition: transform 0.15s ease;
+}
+.filter-btn.active {
+  background: var(--border-strong);
+}
+.filter-btn:hover {
+  background: var(--border-strong);
+  transform: scale(1.25)
+}
+.filter-btn :global(svg) {
+  transition: transform 0.15s ease;
+}
+.filter-btn:hover :global(svg) {
+  transform: scale(1.25);
 }
 .chip {
   font-size: 12px;
@@ -89,12 +102,18 @@
   background: transparent;
   cursor: pointer;
   color: var(--ink-muted);
+  transform-origin: center;
+  transition: transform 0.15s ease, color 0.15s ease;
 }
 .chip.active {
   border-color: var(--border-strong);
   background: var(--border-soft);
   color: var(--ink);
   font-weight: 500;
+}
+.chip:hover {
+  transform: scale(1.2);
+  color: var(--ink);
 }
 .custom-filter-menu {
   border: 1px solid var(--border-soft);
