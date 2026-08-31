@@ -1,6 +1,6 @@
 <script>
-  // import questionMarkIcon from '../ui/assets/icons/question-mark.svg?raw';
-  // import filterIcon from '../ui/assets/icons/filter-icon.svg?raw';
+  import questionMarkIcon from '../ui/assets/icons/question-mark.svg?raw';
+  import filterIcon from '../ui/assets/icons/filter-icon.svg?raw';
 
   // TODO: replace with real data via dbClient.getJobsByStatus() once postings/dbClient wiring is in place
   let jobs = $state([
@@ -136,7 +136,7 @@
         aria-label="Custom filter"
         title="Custom filter"
       >
-        filterIcon
+        {@html filterIcon}
       </button>
       <button class="chip" class:active={filters.remoteOnly} onclick={() => toggleFilter('remoteOnly')}>
         Remote only
@@ -195,7 +195,7 @@
                 aria-label="View raw data"
                 title="View raw data"
               >
-                questionMarkIcon
+                {@html questionMarkIcon}
               </button>
               <div class="job-detail-body">
                 <p class="job-detail-line">
@@ -223,15 +223,21 @@
 </div>
 
 <style>
+  :global(html),
+  :global(body) {
+    margin: 0;
+    background: #eef1f4;
+  }
+
   .postings-page {
-    --paper: #f6f1e7;
-    --ink: #2b241b;
-    --ink-muted: #8a8171;
-    --border-strong: #c9bfa8;
-    --border-soft: #e2d9c5;
-    --new: #185fa5;
-    --shortlist: #3b6d11;
-    --applied: #085041;
+    --paper: #f4f6f8;
+    --ink: #1f2933;
+    --ink-muted: #7b8794;
+    --border-strong: #b8c2cc;
+    --border-soft: #dde3e8;
+    --new: #2563a8;
+    --shortlist: #2f855a;
+    --applied: #285e61;
     --rejected: #a32d2d;
     font-family: system-ui, sans-serif;
     color: var(--ink);
