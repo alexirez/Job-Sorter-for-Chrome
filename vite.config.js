@@ -13,9 +13,11 @@ export default defineConfig({
   ],
   build: {
     outDir: 'dist',
+    modulePreload: false,
     rollupOptions: {
       input: {
-        offscreen: 'src/offscreen/offscreen.html'
+        offscreen: 'src/offscreen/offscreen.html',
+        postings: 'postings.html'
       }
     },
     watch: isWatchMode ? { exclude: ['dist/**', 'node_modules/**'] } : null

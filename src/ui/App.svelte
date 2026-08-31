@@ -139,10 +139,9 @@
     console.log('Settings clicked');
   }
 
-  function viewPostings() {
-    // TODO: read scored postings from storage and render them
-    console.log('View Postings clicked');
-  }
+  function openPostingsTab() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('postings.html') });
+}
 
   onMount(async () => {
     await loadSelectedModel();
@@ -233,7 +232,7 @@
         </div>
     </div>
 
-    <button class="stamp-btn" onclick={viewPostings}>View Postings</button>
+    <button class="stamp-btn" onclick={openPostingsTab}>View Postings</button>
 
   </div>
 </div>
