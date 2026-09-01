@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import questionMarkIcon from '../ui/assets/icons/question-mark.svg?raw';
   import filterIcon from '../ui/assets/icons/filter-icon.svg?raw';
+  import chevronIcon from '../ui/assets/icons/chevron-icon.svg?raw';
   import './postings.css';
 
   let jobs = $state([]);
@@ -176,7 +177,7 @@
               <span class="salary-amount muted">not listed</span>
             {/if}
           </div>
-            <span class="chevron" class:open={expandedIds.has(job.id)}>⌄</span>
+            <span class="chevron" class:open={expandedIds.has(job.id)}>{@html chevronIcon}</span>
           </div>
 
           {#if expandedIds.has(job.id)}
