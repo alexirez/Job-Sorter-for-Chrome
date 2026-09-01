@@ -28,7 +28,7 @@
   background: #eef1f4;
   padding-top: 12px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   height: 44px;
 }
 .job-list {
