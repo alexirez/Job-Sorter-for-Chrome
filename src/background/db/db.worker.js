@@ -49,7 +49,6 @@ async function getJobsByStatus(status) {
     const obj = Object.fromEntries(columns.map((col, i) => [col, row[i]]));
     return { ...obj, remote: obj.remote === null ? null : !!obj.remote };
   });
-  return rows;
 }
 
 async function updateJobStatus(id, newStatus) {
