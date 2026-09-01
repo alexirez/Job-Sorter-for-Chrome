@@ -36,9 +36,18 @@
     }
   }
 
-  // stamp badges tilt only for these two statuses, everything else stays straight
   const STAMP_ROTATION = { new: -4, rejected: 4 };
-  const STAMP_LABEL = { new: 'New', shortlisted: 'Shortlist', applied: 'Applied', rejected: 'Rejected', filtered_out: 'Filtered out' };
+  const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
+  function stampFor(job) {
+    if (job.status === 'new') {
+      const isRecent = job.postedAt && Date.now() - new Date(job.postedAt).getTime() < THREE_DAYS_MS;
+      return isRecent ? { label: 'New', rotate: -4 } : null;
+    }
+    if (job.status === 'rejected') return { label: 'Rejected', rotate: 4 };
+    if (job.status === 'applied') return { label: 'Applied', rotate: 0 };
+    return null;
+  }
 
   let activeStatus = $state('all');
   let expandedIds = $state(new Set());
@@ -133,34 +142,41 @@
         <p class="note">Couldn't load postings: {loadError}</p>
       {:else}
       {#each filteredJobs as job (job.id)}
+      {@const stamp = stampFor(job)}
         <div class="job-card" class:closed={job.status === 'rejected' || job.status === 'filtered_out'}>
-          <div class="job-row">
-            <div
-              class="stamp stamp-{job.status}"
-              style={STAMP_ROTATION[job.status] ? `transform: rotate(${STAMP_ROTATION[job.status]}deg);` : ''}
-            >
-              {STAMP_LABEL[job.status] ?? job.status}
-            </div>
-            <div class="job-main">
-              <p class="job-title">{job.title}</p>
-              <p class="job-meta">{job.company} · {job.location} · posted {job.postedAt}</p>
-            </div>
-            <div class="job-salary">
-              {#if formatSalary(job)}
-                <span class="salary-flag" title={job.salaryIsPredicted ? 'Approximated' : 'Explicit'}>
-                  {job.salaryIsPredicted ? '~' : '✓'}
-                </span>
-                <span class="salary-dollar">$</span>
-                <span class="salary-amount">{formatSalary(job)}</span>
-              {:else}
-                <span class="salary-flag" title="Approximated">~</span>
-                <span class="salary-amount muted">not listed</span>
-              {/if}
-            </div>
-            <button class="more-info-btn" onclick={() => toggleExpanded(job.id)}>
-              More info
-              <span class="chevron" class:open={expandedIds.has(job.id)}>⌄</span>
-            </button>
+          <div
+            class="job-row"
+            role="button"
+            tabindex="0"
+            aria-expanded={expandedIds.has(job.id)}
+            onclick={() => toggleExpanded(job.id)}
+            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(job.id); } }}
+          >
+          {#if stamp}
+          <div
+            class="stamp stamp-{job.status}"
+            style={stamp.rotate ? `transform: rotate(${stamp.rotate}deg);` : ''}
+          >
+            {stamp.label}
+          </div>
+            {/if}
+          <div class="job-main">
+            <p class="job-title">{job.title}</p>
+            <p class="job-meta">{job.company} · {job.location} · posted {job.postedAt}</p>
+          </div>
+          <div class="job-salary">
+            {#if formatSalary(job)}
+              <span class="salary-flag" title={job.salaryIsPredicted ? 'Approximated' : 'Explicit'}>
+                {job.salaryIsPredicted ? '~' : '✓'}
+              </span>
+              <span class="salary-dollar">$</span>
+              <span class="salary-amount">{formatSalary(job)}</span>
+            {:else}
+              <span class="salary-flag" title="Approximated">~</span>
+              <span class="salary-amount muted">not listed</span>
+            {/if}
+          </div>
+            <span class="chevron" class:open={expandedIds.has(job.id)}>⌄</span>
           </div>
 
           {#if expandedIds.has(job.id)}

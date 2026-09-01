@@ -138,6 +138,7 @@
   align-items: center;
   gap: 14px;
   padding: 12px;
+  cursor: pointer;
 }
 .stamp {
   padding: 3px 10px;
@@ -188,21 +189,15 @@
   color: var(--ink-muted);
   font-style: italic;
 }
-.more-info-btn {
-  font-size: 12px;
-  padding: 4px 10px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-  background: transparent;
-  border: 1px solid var(--border-soft);
-  border-radius: 6px;
-  cursor: pointer;
-  color: var(--ink);
-}
 .chevron {
   display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--ink-muted);
   transition: transform 0.15s ease;
 }
 .chevron.open {

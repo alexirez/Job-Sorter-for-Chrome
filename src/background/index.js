@@ -1,27 +1,29 @@
 
-// temporary test
-import { fetchJobs } from '../sources/adzuna.js';
-import { upsertJob, getJobsByStatus } from './db/dbClient.js';
+// // temporary test
+// import { fetchJobs } from '../sources/adzuna.js';
+// import { upsertJob, getJobsByStatus } from './db/dbClient.js';
 
-async function testPipeline() {
-  const jobs = await fetchJobs({
-    country: 'us',
-    keywords: 'frontend developer',
-    location: 'Los Angeles',
-    desiredCount: 50
-  });
+// async function testPipeline() {
+//   const jobs = await fetchJobs({
+//     country: 'us',
+//     keywords: 'frontend',
+//     location: 'Los Angeles',
+//     desiredCount: 50
+//   });
 
-  console.log('Fetched + normalized:', jobs);
+//   console.log('Fetched + normalized:', jobs);
 
-  for (const job of jobs) {
-    await upsertJob(job);
-  }
+//   for (const job of jobs) {
+//     await upsertJob(job);
+//   }
 
-  const stored = await getJobsByStatus('new');
-  console.log('Read back from SQLite:', stored);
-}
+//   const stored = await getJobsByStatus('new');
+//   console.log('Read back from SQLite:', stored);
+// }
 
-testPipeline().catch(err => console.error('Pipeline test failed:', err));
+// testPipeline().catch(err => console.error('Pipeline test failed:', err));
+
+// // endtest
 
 import { getAllJobs } from './db/dbClient.js';
 
