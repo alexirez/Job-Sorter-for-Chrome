@@ -22,13 +22,13 @@ async function upsertJob(job) {
   await initDB();
   const sql = `
     INSERT INTO jobs (
-      id, source, source_id, title, company, location, remote, description,
-      employment_type, salary_min, salary_max, salary_currency, url, posted_at,
-      fetched_at, status, filtered_out_at, shortlisted_at, applied_at, raw
+      id, source, sourceId, title, company, location, remote, description,
+      employmentType, salaryMin, salaryMax, salaryCurrency, url, postedAt,
+      fetchedAt, status, filteredOutAt, shortlistedAt, appliedAt, raw
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       description = excluded.description,
-      fetched_at = excluded.fetched_at,
+      fetchedAt = excluded.fetchedAt,
       raw = excluded.raw;
   `;
   const params = [
@@ -42,13 +42,21 @@ async function upsertJob(job) {
   return { success: true };
 }
 
+function toJob(row, columns) {
+  const obj = Object.fromEntries(columns.map((col, i) => [col, row[i]]));
+  return { ...obj, remote: obj.remote === null ? null : !!obj.remote };
+}
+
 async function getJobsByStatus(status) {
   await initDB();
   const { rows, columns } = await sqlite3.execWithParams(db, 'SELECT * FROM jobs WHERE status = ?', [status]);
-  return rows.map((row) => {
-    const obj = Object.fromEntries(columns.map((col, i) => [col, row[i]]));
-    return { ...obj, remote: obj.remote === null ? null : !!obj.remote };
-  });
+  return rows.map((row) => toJob(row, columns));
+}
+
+async function getAllJobs() {
+  await initDB();
+  const { rows, columns } = await sqlite3.execWithParams(db, 'SELECT * FROM jobs', []);
+  return rows.map((row) => toJob(row, columns));
 }
 
 async function updateJobStatus(id, newStatus) {
@@ -67,7 +75,7 @@ async function updateJobStatus(id, newStatus) {
   return { success: true };
 }
 
-const handlers = { upsertJob, getJobsByStatus, updateJobStatus };
+const handlers = { upsertJob, getJobsByStatus, updateJobStatus, getAllJobs };
 
 self.onmessage = async (event) => {
   const { id, type, payload } = event.data;

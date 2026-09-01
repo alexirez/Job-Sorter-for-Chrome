@@ -1,62 +1,24 @@
 <script>
+  import { onMount } from 'svelte';
   import questionMarkIcon from '../ui/assets/icons/question-mark.svg?raw';
   import filterIcon from '../ui/assets/icons/filter-icon.svg?raw';
   import './postings.css';
 
-  // TODO: replace with real data via dbClient.getJobsByStatus() once postings/dbClient wiring is in place
-  let jobs = $state([
-    {
-      id: 'adzuna:1001',
-      title: 'Senior frontend engineer',
-      company: 'Notion',
-      location: 'Remote',
-      remote: true,
-      status: 'new',
-      postedAt: '2026-08-27',
-      source: 'adzuna',
-      employmentType: 'full_time',
-      salaryMin: 115000,
-      salaryMax: 140000,
-      salaryCurrency: 'USD',
-      salaryIsPredicted: false,
-      description: 'Looking for a senior engineer to lead the editor rendering team, focused on real-time collaboration performance.',
-      raw: { id: 1001, title: 'Senior frontend engineer', company: { display_name: 'Notion' }, salary_min: 115000, salary_max: 140000, salary_is_predicted: '0' }
-    },
-    {
-      id: 'greenhouse:2002',
-      title: 'Platform engineer, data infra',
-      company: 'Anthropic',
-      location: 'San Francisco, CA',
-      remote: false,
-      status: 'shortlisted',
-      postedAt: '2026-08-24',
-      source: 'greenhouse',
-      employmentType: 'full_time',
-      salaryMin: 160000,
-      salaryMax: 210000,
-      salaryCurrency: 'USD',
-      salaryIsPredicted: true,
-      description: null,
-      raw: { id: 2002, title: 'Platform engineer, data infra', location: { name: 'San Francisco, CA' } }
-    },
-    {
-      id: 'adzuna:3003',
-      title: 'Backend engineer, payments',
-      company: 'Stripe',
-      location: 'Remote',
-      remote: true,
-      status: 'rejected',
-      postedAt: '2026-08-15',
-      source: 'adzuna',
-      employmentType: 'full_time',
-      salaryMin: 130000,
-      salaryMax: 165000,
-      salaryCurrency: 'USD',
-      salaryIsPredicted: true,
-      description: 'Build and maintain payment processing infrastructure at scale.',
-      raw: { id: 3003, title: 'Backend engineer, payments', company: { display_name: 'Stripe' } }
+  let jobs = $state([]);
+  let loading = $state(true);
+  let loadError = $state('');
+
+  onMount(async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'postings:getAllJobs' });
+      if (!response.ok) throw new Error(response.error);
+      jobs = response.jobs;
+    } catch (err) {
+      loadError = err.message;
+    } finally {
+      loading = false;
     }
-  ]);
+  });
 
   const STATUS_TABS = [
     { key: 'all', label: 'All' },
@@ -65,6 +27,14 @@
     { key: 'applied', label: 'Applied' },
     { key: 'rejected', label: 'Rejected' }
   ];
+
+  function formatRaw(raw) {
+    try {
+      return JSON.stringify(JSON.parse(raw), null, 2);
+    } catch {
+      return raw ?? 'No raw data stored.';
+    }
+  }
 
   // stamp badges tilt only for these two statuses, everything else stays straight
   const STAMP_ROTATION = { new: -4, rejected: 4 };
@@ -157,6 +127,11 @@
     {/if}
 
     <div class="job-list">
+      {#if loading}
+        <p class="note">Loading postings…</p>
+      {:else if loadError}
+        <p class="note">Couldn't load postings: {loadError}</p>
+      {:else}
       {#each filteredJobs as job (job.id)}
         <div class="job-card" class:closed={job.status === 'rejected' || job.status === 'filtered_out'}>
           <div class="job-row">
@@ -208,7 +183,7 @@
                   <p class="job-description muted">No description provided.</p>
                 {/if}
                 {#if rawOpenIds.has(job.id)}
-                  <pre class="raw-json">{JSON.stringify(job.raw, null, 2)}</pre>
+                  <pre class="raw-json">{formatRaw(job.raw)}</pre>
                 {/if}
               </div>
             </div>
@@ -219,6 +194,7 @@
       {#if filteredJobs.length === 0}
         <p class="note">No postings match the current filters.</p>
       {/if}
+        {/if}
     </div>
   </div>
 </div>

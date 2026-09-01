@@ -1,5 +1,5 @@
-// temporary test
 
+// temporary test
 import { fetchJobs } from '../sources/adzuna.js';
 import { upsertJob, getJobsByStatus } from './db/dbClient.js';
 
@@ -8,7 +8,7 @@ async function testPipeline() {
     country: 'us',
     keywords: 'frontend developer',
     location: 'Los Angeles',
-    desiredCount: 3
+    desiredCount: 50
   });
 
   console.log('Fetched + normalized:', jobs);
@@ -22,3 +22,15 @@ async function testPipeline() {
 }
 
 testPipeline().catch(err => console.error('Pipeline test failed:', err));
+
+import { getAllJobs } from './db/dbClient.js';
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== 'postings:getAllJobs') return;
+
+  getAllJobs()
+    .then((jobs) => sendResponse({ ok: true, jobs }))
+    .catch((error) => sendResponse({ ok: false, error: error.message }));
+
+  return true; // keep the message channel open for the async response
+});

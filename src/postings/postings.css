@@ -1,6 +1,6 @@
 
-:global(html),
-  :global(body) {
+  html,
+  body {
     margin: 0;
     background: #eef1f4;
   }
@@ -88,10 +88,10 @@
   background: var(--border-strong);
   transform: scale(1.2)
 }
-.filter-btn :global(svg) {
+.filter-btn svg {
   transition: transform 0.15s ease;
 }
-.filter-btn:hover :global(svg) {
+.filter-btn:hover svg {
   transform: scale(1.25);
 }
 .chip {
