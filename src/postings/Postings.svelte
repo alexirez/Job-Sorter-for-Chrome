@@ -8,6 +8,27 @@
   let jobs = $state([]);
   let loading = $state(true);
   let loadError = $state('');
+  let jobList; // bound to the scrollable container below
+
+  function handleWheel(e) {
+  if (!jobList) { console.error(`[Postings.svelte] jobList is undefined.`); return; }
+    // bail out if a real scrollable element sits between the event
+    // target and jobList — let it scroll natively
+    for (let el = e.target; el instanceof Element && el !== jobList; el = el.parentElement) {
+    const style = getComputedStyle(el);
+      const scrollable = (style.overflowY === 'auto' || style.overflowY === 'scroll') && el.scrollHeight > el.clientHeight;
+      if (scrollable) return;
+   }
+
+  e.preventDefault();
+  jobList.scrollBy({ top: e.deltaY, left: e.deltaX });
+}
+
+  $effect(() => {
+    const opts = { passive: false, capture: true };
+    window.addEventListener('wheel', handleWheel, opts);
+    return () => window.removeEventListener('wheel', handleWheel, opts);
+  });
 
   onMount(async () => {
     try {
@@ -136,7 +157,7 @@
       </div>
     {/if}
 
-    <div class="job-list">
+    <div class="job-list" bind:this={jobList}>
       {#if loading}
         <p class="note">Loading postings…</p>
       {:else if loadError}
