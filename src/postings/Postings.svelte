@@ -8,26 +8,38 @@
   let jobs = $state([]);
   let loading = $state(true);
   let loadError = $state('');
-  let jobList; // bound to the scrollable container below
+  let jobList; // binded to the scrollable container automatically via bind:this={jobList}
+  let scrollEndTimer; 
 
-  function handleWheel(e) {
-  if (!jobList) { console.error(`[Postings.svelte] jobList is undefined.`); return; }
-    // bail out if a real scrollable element sits between the event
-    // target and jobList — let it scroll natively
-    for (let el = e.target; el instanceof Element && el !== jobList; el = el.parentElement) {
-    const style = getComputedStyle(el);
-      const scrollable = (style.overflowY === 'auto' || style.overflowY === 'scroll') && el.scrollHeight > el.clientHeight;
-      if (scrollable) return;
-   }
+  const OVERSCROLL = 80; // px of scrollable buffer above/below real content
+  const SCROLL_END_DELAY = 250; // ms of scroll silence before we correct position
+ 
+  function clampScroll() {
+    if (!jobList) return;
+    const min = OVERSCROLL;
+    const contentMax = jobList.scrollHeight - jobList.clientHeight - OVERSCROLL;
+    const max = Math.max(min, contentMax); // guards short lists where content < viewport + buffers
 
-  e.preventDefault();
-  jobList.scrollBy({ top: e.deltaY, left: e.deltaX });
-}
+    if (jobList.scrollTop < min || jobList.scrollTop > max) {
+      jobList.style.overflowY = 'hidden';
+      jobList.addEventListener('scrollend', () => { jobList.style.overflowY = 'auto'; }, { once: true });
+      jobList.scrollTo({ top: jobList.scrollTop < min ? min : max, behavior: 'smooth' });
+    }
+  }
+
+  function handleScroll() {
+    clearTimeout(scrollEndTimer);
+    scrollEndTimer = setTimeout(clampScroll, SCROLL_END_DELAY);
+  }
 
   $effect(() => {
-    const opts = { passive: false, capture: true };
-    window.addEventListener('wheel', handleWheel, opts);
-    return () => window.removeEventListener('wheel', handleWheel, opts);
+    if (!jobList) return;
+    jobList.scrollTop = OVERSCROLL; // land inside real bounds, buffer available on both sides
+    jobList.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      jobList.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollEndTimer);
+    };
   });
 
   onMount(async () => {
@@ -158,6 +170,7 @@
     {/if}
 
     <div class="job-list" bind:this={jobList}>
+      <div class="job-list-inner">
       {#if loading}
         <p class="note">Loading postings…</p>
       {:else if loadError}
@@ -233,6 +246,7 @@
         <p class="note">No postings match the current filters.</p>
       {/if}
         {/if}
+        </div>
     </div>
   </div>
 </div>
