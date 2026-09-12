@@ -10,9 +10,18 @@
   let loadError = $state('');
   let jobList; // binded to the scrollable container automatically via bind:this={jobList}
   let scrollEndTimer; 
+  let scrollLocked = false;
 
   const OVERSCROLL = 80; // px of scrollable buffer above/below real content
   const SCROLL_END_DELAY = 250; // ms of scroll silence before we correct position
+
+  function handleWheel(e) {
+    if (!jobList) return;
+    const overList = jobList.contains(e.target) || e.target === jobList;
+    if (overList) return; // let the browser handle it natively — real momentum, real toggle-kill
+    e.preventDefault();
+    if (!scrollLocked) jobList.scrollBy({ top: e.deltaY, left: e.deltaX });
+  }
  
   function clampScroll() {
     if (!jobList) return;
@@ -21,8 +30,12 @@
     const max = Math.max(min, contentMax); // guards short lists where content < viewport + buffers
 
     if (jobList.scrollTop < min || jobList.scrollTop > max) {
+      scrollLocked = true;
       jobList.style.overflowY = 'hidden';
-      jobList.addEventListener('scrollend', () => { jobList.style.overflowY = 'auto'; }, { once: true });
+      jobList.addEventListener('scrollend', () => {
+        jobList.style.overflowY = 'auto';
+        scrollLocked = false;
+      }, { once: true });      
       jobList.scrollTo({ top: jobList.scrollTop < min ? min : max, behavior: 'smooth' });
     }
   }
@@ -31,6 +44,11 @@
     clearTimeout(scrollEndTimer);
     scrollEndTimer = setTimeout(clampScroll, SCROLL_END_DELAY);
   }
+
+  $effect(() => {
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    return () => window.removeEventListener('wheel', handleWheel);
+  });
 
   $effect(() => {
     if (!jobList) return;
