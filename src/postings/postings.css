@@ -32,18 +32,13 @@
   height: 44px;
 }
 .job-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   max-height: calc(100vh - 220px);
   overflow-y: auto;
   padding-bottom: 80px;
   box-sizing: border-box;
-  overscroll-behavior: contain;
-}
-.job-list-inner {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 80px;    /* must match OVERSCROLL in Postings.svelte */
-  padding-bottom: 80px;
 }
 .status-tab {
   padding: 8px 16px;
