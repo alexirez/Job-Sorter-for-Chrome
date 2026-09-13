@@ -9,8 +9,9 @@
   let loading = $state(true);
   let loadError = $state('');
   let jobList; // bound to job-list container
+  let isScrollable = $state(false);
 
-  const TOP_PADDING = 50; // keep in sync with .job-list padding-top in css
+  const TOP_PADDING = 70; // keep in sync with .job-list padding-top in css
 
   function handleWheel(e) {
   if (!jobList) { console.error(`[Postings.svelte] jobList is undefined.`); return; }
@@ -28,7 +29,8 @@
   $effect(() => {
     activeStatus; filters; loading; // reference so Svelte tracks these and reruns this effect on change
     if (!jobList) return;
-    jobList.scrollTop = TOP_PADDING; // land past the top padding so it reads as breathing room, not a gap
+    isScrollable = jobList.scrollHeight > jobList.clientHeight;
+    jobList.scrollTop = TOP_PADDING + (isScrollable ? 20 : 0); // land past the top padding so it reads as breathing room, not a gap
   });
  
   $effect(() => {
@@ -165,6 +167,9 @@
     {/if}
 
     <div class="job-list" bind:this={jobList}>
+      {#if isScrollable}
+        <p class="start-of-list">--- Top of List ---</p>
+      {/if}
       {#if loading}
         <p class="note">Loading postings…</p>
       {:else if loadError}
