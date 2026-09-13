@@ -8,12 +8,13 @@
   let jobs = $state([]);
   let loading = $state(true);
   let loadError = $state('');
-  let jobList; // bound to the scrollable container below
+  let jobList; // bound to job-list container
+
+  const TOP_PADDING = 50; // keep in sync with .job-list padding-top in css
 
   function handleWheel(e) {
   if (!jobList) { console.error(`[Postings.svelte] jobList is undefined.`); return; }
-    // bail out if a real scrollable element sits between the event
-    // target and jobList — let it scroll natively
+    // if a scrollable element sits between the event, let it scroll natively instead
     for (let el = e.target; el instanceof Element && el !== jobList; el = el.parentElement) {
     const style = getComputedStyle(el);
       const scrollable = (style.overflowY === 'auto' || style.overflowY === 'scroll') && el.scrollHeight > el.clientHeight;
@@ -24,6 +25,12 @@
   jobList.scrollBy({ top: e.deltaY, left: e.deltaX });
 }
 
+  $effect(() => {
+    activeStatus; filters; loading; // reference so Svelte tracks these and reruns this effect on change
+    if (!jobList) return;
+    jobList.scrollTop = TOP_PADDING; // land past the top padding so it reads as breathing room, not a gap
+  });
+ 
   $effect(() => {
     const opts = { passive: false, capture: true };
     window.addEventListener('wheel', handleWheel, opts);
