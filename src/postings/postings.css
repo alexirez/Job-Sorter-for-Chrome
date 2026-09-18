@@ -130,6 +130,10 @@
 .job-card {
   border: 1px solid var(--border-soft);
   border-radius: 8px;
+  background: var(--paper);
+}
+.job-card:nth-of-type(even) {
+  background: var(--border-soft);
 }
 .job-card.closed {
   opacity: 0.55;
