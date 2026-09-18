@@ -160,7 +160,7 @@
 }
 .job-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
   margin: 0 0 2px;
 }
 .job-meta {
@@ -184,7 +184,7 @@
   font-weight: 600;
 }
 .salary-amount {
-  font-size: 13px;
+  font-size: 15px;
 }
 .salary-amount.muted {
   color: var(--ink-muted);
