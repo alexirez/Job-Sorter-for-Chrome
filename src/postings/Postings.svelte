@@ -245,7 +245,7 @@
         <p class="note">No postings match the current filters.</p>
       {/if}
       {#if isScrollable}
-        <p class="end-of-list">you've reached the end</p>
+        <p class="end-of-list">You've reached the end.</p>
       {/if}
         {/if}
     </div>
