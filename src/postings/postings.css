@@ -36,10 +36,12 @@
   flex-direction: column;
   gap: 10px;
   max-height: calc(100vh - 220px);
+  overflow-x: clip;
   overflow-y: auto;
   padding-top: 10px;
   padding-bottom: 10px;         /* We add more via end-of-list banner */
   box-sizing: border-box;
+  overscroll-behavior-y: contain;
 }
 .status-tab {
   padding: 8px 16px;
