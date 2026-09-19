@@ -9,6 +9,8 @@
   let loading = $state(true);
   let loadError = $state('');
 
+  let selectAllNode;
+
   onMount(async () => {
     try {
       const response = await chrome.runtime.sendMessage({ type: 'postings:getAllJobs' });
@@ -77,10 +79,6 @@
     })
   );
 
-  let allVisibleSelected = $derived(
-    filteredJobs.length > 0 && filteredJobs.every((j) => selectedIds.has(j.id))
-  );
-
   function toggleExpanded(id) {
     const next = new Set(expandedIds);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -113,13 +111,26 @@
   }
 
   function toggleSelectAllVisible() {
-    const next = new Set(selectedIds);
-    if (allVisibleSelected) {
-      filteredJobs.forEach((j) => next.delete(j.id));
-    } else {
-      filteredJobs.forEach((j) => next.add(j.id));
-    }
-    selectedIds = next;
+    // Anything selected at all → clear it. Nothing selected → select every
+    // visible job. This intentionally ignores "partial" selection as a
+    // distinct state for the click action itself (see indeterminate below
+    // for how partial selection is still *shown*).
+    selectedIds = selectedIds.size > 0 ? new Set() : new Set(filteredJobs.map((j) => j.id));
+  }
+
+  function handleSelectAllClick(event) {
+    toggleSelectAllVisible();
+    // selectAllNode comes from bind:this — a stable reference to the
+    // element itself, independent of how this handler gets invoked.
+    selectAllNode.indeterminate = selectedIds.size > 0 && selectedIds.size < filteredJobs.length;
+    selectAllNode.checked = selectedIds.size > 0;
+  } 
+
+  // Svelte has no `indeterminate` HTML attribute (it's a DOM-only property,
+  // not reflected in markup), so a small action sets it directly on the node.
+  function setIndeterminate(node, value) {
+    node.indeterminate = value;
+    return { update(next) { node.indeterminate = next; } };
   }
 
   // TODO: wire these up to real background messages once archive/delete land
@@ -190,6 +201,20 @@
     </div>
 
     <div class="filters-row">
+      <div class="select-all-wrap">
+        <input
+          type="checkbox"
+          class="select-all-checkbox"
+          bind:this={selectAllNode}
+          checked={selectedIds.size > 0}
+          use:setIndeterminate={selectedIds.size > 0 && selectedIds.size < filteredJobs.length}
+          onclick={handleSelectAllClick}
+          aria-label="Select or deselect all visible postings"
+        />
+        {#if selectedIds.size > 0}
+          <span class="select-all-tooltip">{selectedIds.size} selected</span>
+        {/if}
+      </div>
       <button
         class="icon-btn filter-btn"
         class:active={showFilterMenu}
@@ -241,9 +266,6 @@
     ></div>
 
   <nav class="rail rail-left">
-    <button class="rail-btn" class:active={allVisibleSelected} onclick={toggleSelectAllVisible} aria-label="Select all visible" title="Select all visible">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 12l3 3 5-6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-    </button>
     <button class="rail-btn" disabled={selectedIds.size === 0} onclick={archiveSelected} aria-label="Mark as Old" title="Mark as Old">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18M5 7v12a1 1 0 001 1h12a1 1 0 001-1V7M9 11h6" stroke-linecap="round" stroke-linejoin="round" /></svg>
     </button>
