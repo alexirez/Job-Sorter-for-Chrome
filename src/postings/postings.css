@@ -94,7 +94,26 @@ body {
 .chip.active { border-color: var(--border-strong); background: var(--border-soft); color: var(--ink); font-weight: 500; }
 .chip:hover { transform: scale(1.15); color: var(--ink); }
 
-.custom-filter-menu { border: 1px solid var(--border-soft); border-radius: 8px; padding: 10px 14px; margin-top: 10px; }
+.filter-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 41, 51, 0.25);
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-filter-menu {
+  background: var(--paper);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 18px 20px;
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
 .selection-actions { display: flex; align-items: center; gap: 8px; }
 .selection-count { font-size: 12px; color: var(--ink-muted); margin-right: 2px; }
 .selection-actions .icon-btn { border: 1px solid var(--border-soft); }

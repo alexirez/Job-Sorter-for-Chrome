@@ -51,6 +51,18 @@
   let rawOpenIds = $state(new Set());
   let filters = $state({ remoteOnly: false, salaryListed: false, postedThisWeek: false });
   let showFilterMenu = $state(false);
+  let filterMenuNode = $state(null);
+
+  $effect(() => {
+    if (showFilterMenu && filterMenuNode) filterMenuNode.focus();
+  });
+
+  $effect(() => {
+    if (!showFilterMenu) return;
+    function onKey(e) { if (e.key === 'Escape') showFilterMenu = false; }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   // Multi-select
   let selectedIds = $state(new Set());
@@ -242,8 +254,27 @@
     </div>
 
     {#if showFilterMenu}
-      <div class="custom-filter-menu">
-        <p class="note">Custom filter builder goes here (field, operator, value).</p>
+      <div
+        class="filter-menu-backdrop"
+        role="button"
+        tabindex="0"
+        aria-label="Close filter menu"
+        onclick={() => (showFilterMenu = false)}
+        onkeydown={(e) => { if (e.key === 'Escape') showFilterMenu = false; }}
+      >
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- stopPropagation guard, not itself interactive -->
+        <div
+          class="custom-filter-menu"
+          role="dialog"
+          aria-label="Custom filter"
+          aria-modal="true"
+          tabindex="-1"
+          bind:this={filterMenuNode}
+          onclick={(e) => e.stopPropagation()}
+          onkeydown={(e) => { if (e.key === 'Escape') showFilterMenu = false; e.stopPropagation(); }}
+        >
+          <p class="note">Custom filter builder goes here (field, operator, value).</p>
+        </div>
       </div>
     {/if}
   </div>
