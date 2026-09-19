@@ -598,27 +598,25 @@
             <div class="filter-section">
               <div class="filter-section-header">
                 <span>AI filter</span>
+                <label class="toggle-switch" class:on={draftFilterState.aiFilterEnabled}>
+                  <input
+                    type="checkbox"
+                    class="sr-only-checkbox"
+                    checked={draftFilterState.aiFilterEnabled}
+                    onchange={() => (draftFilterState.aiFilterEnabled = !draftFilterState.aiFilterEnabled)}
+                  />
+                </label>
               </div>
+              {#if draftFilterState.aiFilterEnabled}
                 <div class="filter-section-body">
-                  <label class="ideal-toggle-row ai-toggle-row">
-                    <span class="toggle-switch" class:on={draftFilterState.aiFilterEnabled}>
-                      <input
-                        type="checkbox"
-                        class="sr-only-checkbox"
-                        checked={draftFilterState.aiFilterEnabled}
-                        onchange={() => (draftFilterState.aiFilterEnabled = !draftFilterState.aiFilterEnabled)}
-                      />
-                    </span>
-                  </label>
-                  {#if draftFilterState.aiFilterEnabled}
-                    <textarea
-                      class="ai-filter-textarea"
-                      bind:value={draftFilterState.aiFilterPrompt}
-                      placeholder="e.g. exclude anything requiring a security clearance"
-                    ></textarea>
-                    <p class="filter-hint">Sends job descriptions to an AI model to classify against this prompt.</p>
-                  {/if}
+                  <textarea
+                    class="ai-filter-textarea"
+                    bind:value={draftFilterState.aiFilterPrompt}
+                    placeholder="e.g. exclude anything requiring a security clearance"
+                  ></textarea>
+                  <p class="filter-hint">Sends job descriptions to an AI model to classify against this prompt.</p>
                 </div>
+              {/if}
             </div>
           </div>
 
