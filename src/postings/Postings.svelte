@@ -53,6 +53,177 @@
   let showFilterMenu = $state(false);
   let filterMenuNode = $state(null);
 
+  const COMP_TYPES = {
+    salary: { min: 0, max: 300000, step: 1000, prefix: '$' },
+    hourly: { min: 0, max: 200, step: 1, prefix: '$' }
+  };
+
+  const WORK_TYPES = [
+    { key: 'inPerson', label: 'In-person' },
+    { key: 'remote', label: 'Remote' },
+    { key: 'hybrid', label: 'Hybrid' },
+    { key: 'unclassified', label: 'Unclassified' }
+  ];
+
+  const POSTED_WITHIN = [
+    { key: '24h', label: '24h' },
+    { key: '3d', label: '3d' },
+    { key: 'week', label: 'Week' },
+    { key: 'month', label: 'Month' },
+    { key: 'any', label: 'Any' }
+  ];
+
+  function defaultFilterState() {
+    return {
+      postedWithin: 'any',
+      compType: 'salary',
+      salaryMin: 60000,
+      salaryMax: 180000,
+      hourlyMin: 20,
+      hourlyMax: 80,
+      idealPayEnabled: false,
+      idealPay: 120000,
+      workType: { inPerson: true, remote: true, hybrid: true, unclassified: true },
+      includeKeywords: [],
+      excludeKeywords: [],
+      aiFilterEnabled: false,
+      aiFilterPrompt: ''
+    };
+  }
+
+  // The filters actually applied to the job list right now.
+  let appliedFilterState = $state(defaultFilterState());
+  // A scratch copy the popup edits. Only copied into appliedFilterState on Apply,
+  // so closing the popup any other way (X, backdrop, Escape) discards edits.
+  let draftFilterState = $state(defaultFilterState());
+
+  let includeKeywordInput = $state('');
+  let excludeKeywordInput = $state('');
+  let compTrackNode = $state(null);
+
+  function openFilterMenu() {
+    draftFilterState = $state.snapshot(appliedFilterState);
+    showFilterMenu = true;
+  }
+
+  function closeFilterMenu() {
+    showFilterMenu = false;
+  }
+
+  function toggleWorkType(key) {
+    draftFilterState.workType = { ...draftFilterState.workType, [key]: !draftFilterState.workType[key] };
+  }
+
+  function commitKeyword(listKey, rawValue) {
+    const parts = rawValue.split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0) return '';
+    draftFilterState[listKey] = [...draftFilterState[listKey], ...parts];
+    return '';
+  }
+
+  function handleKeywordKeydown(listKey, event) {
+    const isInclude = listKey === 'includeKeywords';
+    const value = isInclude ? includeKeywordInput : excludeKeywordInput;
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault();
+      const next = commitKeyword(listKey, value);
+      if (isInclude) includeKeywordInput = next; else excludeKeywordInput = next;
+    } else if (event.key === 'Backspace' && value === '' && draftFilterState[listKey].length > 0) {
+      draftFilterState[listKey] = draftFilterState[listKey].slice(0, -1);
+    }
+  }
+
+  function handleKeywordBlur(listKey) {
+    const isInclude = listKey === 'includeKeywords';
+    const value = isInclude ? includeKeywordInput : excludeKeywordInput;
+    const next = commitKeyword(listKey, value);
+    if (isInclude) includeKeywordInput = next; else excludeKeywordInput = next;
+  }
+
+  function removeKeyword(listKey, index) {
+    draftFilterState[listKey] = draftFilterState[listKey].filter((_, i) => i !== index);
+  }
+
+  function compBounds() {
+    return COMP_TYPES[draftFilterState.compType];
+  }
+
+  function compMinValue() {
+    return draftFilterState.compType === 'salary' ? draftFilterState.salaryMin : draftFilterState.hourlyMin;
+  }
+
+  function compMaxValue() {
+    return draftFilterState.compType === 'salary' ? draftFilterState.salaryMax : draftFilterState.hourlyMax;
+  }
+
+  function compPercent(value) {
+    const { min, max } = compBounds();
+    return Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+  }
+
+  function clampComp(value) {
+    const { min, max } = compBounds();
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function formatComp(value) {
+    return Math.round(value).toLocaleString();
+  }
+
+  function setCompMin(raw) {
+    const parsed = Number(String(raw).replace(/[^0-9.]/g, ''));
+    if (Number.isNaN(parsed)) return;
+    const key = draftFilterState.compType === 'salary' ? 'salaryMin' : 'hourlyMin';
+    const maxVal = compMaxValue();
+    draftFilterState[key] = Math.min(clampComp(parsed), maxVal);
+  }
+
+  function setCompMax(raw) {
+    const parsed = Number(String(raw).replace(/[^0-9.]/g, ''));
+    if (Number.isNaN(parsed)) return;
+    const key = draftFilterState.compType === 'salary' ? 'salaryMax' : 'hourlyMax';
+    const minVal = compMinValue();
+    draftFilterState[key] = Math.max(clampComp(parsed), minVal);
+  }
+
+  function startIdealDrag(event) {
+    if (!draftFilterState.idealPayEnabled || !compTrackNode) return;
+    event.preventDefault();
+    function onMove(e) {
+      const rect = compTrackNode.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const { min, max } = compBounds();
+      draftFilterState.idealPay = clampComp(Math.round(min + ratio * (max - min)));
+    }
+    function onUp() {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  function handleIdealKeydown(event) {
+    const { min, max, step } = compBounds();
+    let delta = 0;
+    if (event.key === 'ArrowLeft') delta = -step;
+    else if (event.key === 'ArrowRight') delta = step;
+    else return;
+    event.preventDefault();
+    draftFilterState.idealPay = Math.min(max, Math.max(min, draftFilterState.idealPay + delta));
+  }
+
+  function applyFilters() {
+    appliedFilterState = $state.snapshot(draftFilterState);
+    showFilterMenu = false;
+    // TODO: recompute filteredJobs / message background using appliedFilterState
+    // (postedWithin, salary/hourly range, workType, include/exclude keywords, AI filter)
+  }
+
+  function clearDraftFilters() {
+    draftFilterState = defaultFilterState();
+  }
+
   $effect(() => {
     if (showFilterMenu && filterMenuNode) filterMenuNode.focus();
   });
@@ -241,7 +412,7 @@
         <button
           class="icon-btn filter-btn"
           class:active={showFilterMenu}
-          onclick={() => (showFilterMenu = !showFilterMenu)}
+          onclick={openFilterMenu}
           aria-label="Custom filter"
           title="Custom filter"
         >
@@ -259,10 +430,9 @@
         role="button"
         tabindex="0"
         aria-label="Close filter menu"
-        onclick={() => (showFilterMenu = false)}
-        onkeydown={(e) => { if (e.key === 'Escape') showFilterMenu = false; }}
+        onclick={closeFilterMenu}
+        onkeydown={(e) => { if (e.key === 'Escape') closeFilterMenu(); }}
       >
-        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- stopPropagation guard, not itself interactive -->
         <div
           class="custom-filter-menu"
           role="dialog"
@@ -271,9 +441,191 @@
           tabindex="-1"
           bind:this={filterMenuNode}
           onclick={(e) => e.stopPropagation()}
-          onkeydown={(e) => { if (e.key === 'Escape') showFilterMenu = false; e.stopPropagation(); }}
+          onkeydown={(e) => { if (e.key === 'Escape') closeFilterMenu(); e.stopPropagation(); }}
         >
-          <p class="note">Custom filter builder goes here (field, operator, value).</p>
+          <div class="filter-popup-header">
+            <span>Filters</span>
+            <button class="icon-btn filter-popup-close" onclick={closeFilterMenu} aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
+            </button>
+          </div>
+
+          <div class="filter-sections">
+            <div class="filter-section">
+              <div class="filter-section-header">                
+                <span>Posted within</span>
+                <span class="filter-section-summary">
+                  {POSTED_WITHIN.find((o) => o.key === draftFilterState.postedWithin)?.label}
+                </span>
+              </div>
+              <div class="filter-section-body">
+                <div class="pill-row">
+                  {#each POSTED_WITHIN as opt}
+                    <button class="pill-toggle" class:active={draftFilterState.postedWithin === opt.key} onclick={() => (draftFilterState.postedWithin = opt.key)}>
+                      {opt.label}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            </div>
+
+            <div class="filter-section">
+              <div class="filter-section-header">                
+                <span>Compensation</span>
+                <span class="filter-section-summary">
+                  {draftFilterState.compType === 'salary' ? 'Salary' : 'Hourly'}: {compBounds().prefix}{formatComp(compMinValue())}&ndash;{compBounds().prefix}{formatComp(compMaxValue())}
+                </span>
+              </div>
+              <div class="filter-section-body">
+                <div class="pill-row">
+                  <button class="pill-toggle" class:active={draftFilterState.compType === 'salary'} onclick={() => (draftFilterState.compType = 'salary')}>Salary</button>
+                  <button class="pill-toggle" class:active={draftFilterState.compType === 'hourly'} onclick={() => (draftFilterState.compType = 'hourly')}>Hourly</button>
+                </div>
+
+                <div class="comp-inputs">
+                  <input class="comp-text-input" value={formatComp(compMinValue())} onchange={(e) => setCompMin(e.target.value)} aria-label="Minimum" />
+                  <span class="comp-to">to</span>
+                  <input class="comp-text-input" value={formatComp(compMaxValue())} onchange={(e) => setCompMax(e.target.value)} aria-label="Maximum" />
+                </div>
+
+                <div class="comp-track" bind:this={compTrackNode}>
+                  <div class="comp-track-base"></div>
+                  <div class="comp-track-fill" style="left: {compPercent(compMinValue())}%; right: {100 - compPercent(compMaxValue())}%;"></div>
+                  <div class="comp-handle" style="left: {compPercent(compMinValue())}%;"></div>
+                  <div class="comp-handle" style="left: {compPercent(compMaxValue())}%;"></div>
+                  {#if draftFilterState.idealPayEnabled}
+                    <div
+                      class="comp-ideal-marker"
+                      style="left: {compPercent(draftFilterState.idealPay)}%;"
+                      role="slider"
+                      tabindex="0"
+                      aria-label="Ideal pay target"
+                      aria-valuenow={draftFilterState.idealPay}
+                      aria-valuemin={compBounds().min}
+                      aria-valuemax={compBounds().max}
+                      onpointerdown={startIdealDrag}
+                      onkeydown={handleIdealKeydown}
+                    ></div>
+                  {/if}
+                </div>
+                <div class="comp-track-labels">
+                  <span>{compBounds().prefix}{formatComp(compBounds().min)}</span>
+                  <span>{compBounds().prefix}{formatComp(compBounds().max)}+</span>
+                </div>
+
+                <label class="ideal-toggle-row">
+                  <span>Set an ideal pay target</span>
+                  <span class="toggle-switch" class:on={draftFilterState.idealPayEnabled}>
+                    <input
+                      type="checkbox"
+                      class="sr-only-checkbox"
+                      checked={draftFilterState.idealPayEnabled}
+                      onchange={() => (draftFilterState.idealPayEnabled = !draftFilterState.idealPayEnabled)}
+                    />
+                  </span>
+                </label>
+                {#if draftFilterState.idealPayEnabled}
+                  <p class="filter-hint">Drag the marker to influence sort, not filtering. Currently {compBounds().prefix}{formatComp(draftFilterState.idealPay)}.</p>
+                {/if}
+              </div>
+            </div>
+
+            <div class="filter-section">
+              <div class="filter-section-header">
+                <span>Work type</span>
+                <span class="filter-section-summary">
+                  {Object.values(draftFilterState.workType).every(Boolean) ? 'All included' : `${Object.values(draftFilterState.workType).filter(Boolean).length} of 4`}
+                </span>
+              </div>
+               <div class="filter-section-body">
+                 <div class="work-type-grid">
+                   {#each WORK_TYPES as wt}
+                     <label class="work-type-item">
+                       <input type="checkbox" checked={draftFilterState.workType[wt.key]} onchange={() => toggleWorkType(wt.key)} />
+                       {wt.label}
+                     </label>
+                   {/each}
+                 </div>
+               </div>
+            </div>
+
+            <div class="filter-section">
+              <div class="filter-section-header">
+                <span>Keywords</span>
+                <span class="filter-section-summary">
+                  {draftFilterState.includeKeywords.length} include, {draftFilterState.excludeKeywords.length} exclude
+                </span>
+              </div>
+              <div class="filter-section-body">
+                <label class="keyword-label" for="include-kw-input">Include</label>
+                <div class="keyword-input-box">
+                  {#each draftFilterState.includeKeywords as kw, i}
+                    <span class="keyword-pill include">
+                      {kw}
+                      <button class="keyword-pill-remove" onclick={() => removeKeyword('includeKeywords', i)} aria-label="Remove {kw}">×</button>
+                    </span>
+                  {/each}
+                  <input
+                    id="include-kw-input"
+                    class="keyword-input"
+                    bind:value={includeKeywordInput}
+                    onkeydown={(e) => handleKeywordKeydown('includeKeywords', e)}
+                    onblur={() => handleKeywordBlur('includeKeywords')}
+                    placeholder="add keyword..."
+                  />
+                </div>
+
+                <label class="keyword-label" for="exclude-kw-input">Exclude</label>
+                <div class="keyword-input-box">
+                  {#each draftFilterState.excludeKeywords as kw, i}
+                    <span class="keyword-pill exclude">
+                      {kw}
+                      <button class="keyword-pill-remove" onclick={() => removeKeyword('excludeKeywords', i)} aria-label="Remove {kw}">×</button>
+                    </span>
+                  {/each}
+                  <input
+                    id="exclude-kw-input"
+                    class="keyword-input"
+                    bind:value={excludeKeywordInput}
+                    onkeydown={(e) => handleKeywordKeydown('excludeKeywords', e)}
+                    onblur={() => handleKeywordBlur('excludeKeywords')}
+                    placeholder="add keyword..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="filter-section">
+              <div class="filter-section-header">
+                <span>AI filter</span>
+              </div>
+                <div class="filter-section-body">
+                  <label class="ideal-toggle-row ai-toggle-row">
+                    <span class="toggle-switch" class:on={draftFilterState.aiFilterEnabled}>
+                      <input
+                        type="checkbox"
+                        class="sr-only-checkbox"
+                        checked={draftFilterState.aiFilterEnabled}
+                        onchange={() => (draftFilterState.aiFilterEnabled = !draftFilterState.aiFilterEnabled)}
+                      />
+                    </span>
+                  </label>
+                  {#if draftFilterState.aiFilterEnabled}
+                    <textarea
+                      class="ai-filter-textarea"
+                      bind:value={draftFilterState.aiFilterPrompt}
+                      placeholder="e.g. exclude anything requiring a security clearance"
+                    ></textarea>
+                    <p class="filter-hint">Sends job descriptions to an AI model to classify against this prompt.</p>
+                  {/if}
+                </div>
+            </div>
+          </div>
+
+          <div class="filter-popup-footer">
+            <button class="chip" onclick={clearDraftFilters}>Clear all</button>
+            <button class="chip apply-btn" onclick={applyFilters}>Apply</button>
+          </div>
         </div>
       </div>
     {/if}
