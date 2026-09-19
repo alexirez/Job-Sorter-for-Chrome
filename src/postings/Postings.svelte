@@ -215,18 +215,30 @@
           <span class="select-all-tooltip">{selectedIds.size} selected</span>
         {/if}
       </div>
-      <button
-        class="icon-btn filter-btn"
-        class:active={showFilterMenu}
-        onclick={() => (showFilterMenu = !showFilterMenu)}
-        aria-label="Custom filter"
-        title="Custom filter"
-      >
-        {@html filterIcon}
-      </button>
-      <button class="chip" class:active={filters.remoteOnly} onclick={() => toggleFilter('remoteOnly')}>Remote only</button>
-      <button class="chip" class:active={filters.salaryListed} onclick={() => toggleFilter('salaryListed')}>Salary listed</button>
-      <button class="chip" class:active={filters.postedThisWeek} onclick={() => toggleFilter('postedThisWeek')}>Posted this week</button>
+      {#if selectedIds.size > 0}
+        <div class="selection-actions">
+          <span class="selection-count">{selectedIds.size} selected</span>
+          <button class="icon-btn" onclick={archiveSelected} aria-label="Mark as Old" title="Mark as Old">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18M5 7v12a1 1 0 001 1h12a1 1 0 001-1V7M9 11h6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+          <button class="icon-btn danger" onclick={deleteSelected} aria-label="Delete permanently" title="Delete permanently">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13a2 2 0 002 2h4a2 2 0 002-2l1-13" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+        </div>
+      {:else}
+        <button
+          class="icon-btn filter-btn"
+          class:active={showFilterMenu}
+          onclick={() => (showFilterMenu = !showFilterMenu)}
+          aria-label="Custom filter"
+          title="Custom filter"
+        >
+          {@html filterIcon}
+        </button>
+        <button class="chip" class:active={filters.remoteOnly} onclick={() => toggleFilter('remoteOnly')}>Remote only</button>
+        <button class="chip" class:active={filters.salaryListed} onclick={() => toggleFilter('salaryListed')}>Salary listed</button>
+        <button class="chip" class:active={filters.postedThisWeek} onclick={() => toggleFilter('postedThisWeek')}>Posted this week</button>
+      {/if}
     </div>
 
     {#if showFilterMenu}
@@ -266,16 +278,6 @@
     ></div>
 
   <nav class="rail rail-left">
-    <button class="rail-btn" disabled={selectedIds.size === 0} onclick={archiveSelected} aria-label="Mark as Old" title="Mark as Old">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18M5 7v12a1 1 0 001 1h12a1 1 0 001-1V7M9 11h6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-    </button>
-    <button class="rail-btn danger" disabled={selectedIds.size === 0} onclick={deleteSelected} aria-label="Delete permanently" title="Delete permanently">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13a2 2 0 002 2h4a2 2 0 002-2l1-13" stroke-linecap="round" stroke-linejoin="round" /></svg>
-    </button>
-    {#if selectedIds.size > 0}
-      <span class="rail-badge">{selectedIds.size}</span>
-    {/if}
-    <div class="rail-divider"></div>
     <button class="rail-btn text-btn" title="View archived">Old</button>
   </nav>
 
