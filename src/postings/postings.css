@@ -133,6 +133,8 @@ body {
 .filter-section-body { padding: 0 0 14px; }
 
 .pill-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
+.pill-row:has(.comp-type-toggle) { justify-content: center; }
+.comp-type-toggle { flex: 1; text-align: center; max-width: 180px; }
 .pill-toggle {
   padding: 5px 12px; font-size: 12px; border-radius: 16px;
   border: 1px solid var(--border-soft); background: transparent; color: var(--ink-muted); cursor: pointer;
@@ -148,8 +150,10 @@ body {
 .comp-handle {
   position: absolute; top: 4px; width: 14px; height: 14px;
   background: var(--new); border-radius: 50%; border: 2px solid var(--paper);
-  transform: translateX(-50%); pointer-events: none;
+  transform: translateX(-50%); cursor: ew-resize;
 }
+.comp-handle:first-of-type { z-index: 2; }
+.comp-handle:last-of-type { z-index: 1; }
 .comp-ideal-marker {
   position: absolute; top: -2px; width: 12px; height: 12px;
   background: var(--shortlist); border: 2px solid var(--paper);

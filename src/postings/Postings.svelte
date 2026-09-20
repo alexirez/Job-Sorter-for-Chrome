@@ -23,12 +23,9 @@
     }
   });
 
-  const STATUS_TABS = [
-    { key: 'all', label: 'All' },
-    { key: 'new', label: 'New' },
-    { key: 'shortlisted', label: 'Shortlisted' },
-    { key: 'applied', label: 'Applied' },
-    { key: 'rejected', label: 'Rejected' }
+  const STATUS_TABS = [ 
+      { key: 'all', label: 'All' }, { key: 'new', label: 'New' }, { key: 'shortlisted', label: 'Shortlisted' }, 
+      { key: 'applied', label: 'Applied' }, { key: 'rejected', label: 'Rejected' }
   ];
 
   function formatRaw(raw) {
@@ -36,6 +33,7 @@
   }
 
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+  const HOURS_PER_YEAR = 2080;
   function stampFor(job) {
     if (job.status === 'new') {
       const isRecent = job.postedAt && Date.now() - new Date(job.postedAt).getTime() < THREE_DAYS_MS;
@@ -54,17 +52,15 @@
   let filterMenuNode = $state(null);
 
   const COMP_TYPES = {
-    salary: { min: 0, max: 300000, step: 1000, prefix: '$' },
-    hourly: { min: 0, max: 200, step: 1, prefix: '$' }
+    salary: { min: 0, max: 500000, step: 1000, prefix: '$' },
+    hourly: { min: 0, max: 240, step: 1, prefix: '$' }
   };
-
   const WORK_TYPES = [
     { key: 'inPerson', label: 'In-person' },
     { key: 'remote', label: 'Remote' },
     { key: 'hybrid', label: 'Hybrid' },
     { key: 'unclassified', label: 'Unclassified' }
   ];
-
   const POSTED_WITHIN = [
     { key: '24h', label: '24h' },
     { key: '3d', label: '3d' },
@@ -186,6 +182,13 @@
     draftFilterState[key] = Math.max(clampComp(parsed), minVal);
   }
 
+  function setCompType(type) {
+    draftFilterState.compType = type;
+    const minV = type === 'salary' ? draftFilterState.salaryMin : draftFilterState.hourlyMin;
+    const maxV = type === 'salary' ? draftFilterState.salaryMax : draftFilterState.hourlyMax;
+    draftFilterState.idealPay = Math.round((minV + maxV) / 2);
+  }
+
   function startIdealDrag(event) {
     if (!draftFilterState.idealPayEnabled || !compTrackNode) return;
     event.preventDefault();
@@ -211,6 +214,46 @@
     else return;
     event.preventDefault();
     draftFilterState.idealPay = Math.min(max, Math.max(min, draftFilterState.idealPay + delta));
+  }
+
+  function startCompDrag(which) {
+    return (event) => {
+      if (!compTrackNode) return;
+      event.preventDefault();
+      const { min, max, step } = compBounds();
+      function onMove(e) {
+        const rect = compTrackNode.getBoundingClientRect();
+        const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+        const raw = clampComp(Math.round(min + ratio * (max - min)));
+        if (which === 'min') {
+          setCompMin(Math.min(raw, compMaxValue() - step));
+        } else {
+          setCompMax(Math.max(raw, compMinValue() + step));
+        }
+      }
+      function onUp() {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+      }
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    };
+  }
+
+  function handleCompHandleKeydown(which) {
+    return (event) => {
+      const { step } = compBounds();
+      let delta = 0;
+      if (event.key === 'ArrowLeft') delta = -step;
+      else if (event.key === 'ArrowRight') delta = step;
+      else return;
+      event.preventDefault();
+      if (which === 'min') {
+        setCompMin(compMinValue() + delta);
+      } else {
+        setCompMax(compMaxValue() + delta);
+      }
+    };
   }
 
   function applyFilters() {
@@ -478,8 +521,8 @@
               </div>
               <div class="filter-section-body">
                 <div class="pill-row">
-                  <button class="pill-toggle" class:active={draftFilterState.compType === 'salary'} onclick={() => (draftFilterState.compType = 'salary')}>Salary</button>
-                  <button class="pill-toggle" class:active={draftFilterState.compType === 'hourly'} onclick={() => (draftFilterState.compType = 'hourly')}>Hourly</button>
+                  <button class="pill-toggle comp-type-toggle" class:active={draftFilterState.compType === 'salary'} onclick={() => setCompType('salary')}>Salary</button>
+                  <button class="pill-toggle comp-type-toggle" class:active={draftFilterState.compType === 'hourly'} onclick={() => setCompType('hourly')}>Hourly</button>
                 </div>
 
                 <div class="comp-inputs">
@@ -491,8 +534,30 @@
                 <div class="comp-track" bind:this={compTrackNode}>
                   <div class="comp-track-base"></div>
                   <div class="comp-track-fill" style="left: {compPercent(compMinValue())}%; right: {100 - compPercent(compMaxValue())}%;"></div>
-                  <div class="comp-handle" style="left: {compPercent(compMinValue())}%;"></div>
-                  <div class="comp-handle" style="left: {compPercent(compMaxValue())}%;"></div>
+                  <div
+                    class="comp-handle"
+                    style="left: {compPercent(compMinValue())}%;"
+                    role="slider"
+                    tabindex="0"
+                    aria-label="Minimum {draftFilterState.compType}"
+                    aria-valuenow={compMinValue()}
+                    aria-valuemin={compBounds().min}
+                    aria-valuemax={compMaxValue()}
+                    onpointerdown={startCompDrag('min')}
+                    onkeydown={handleCompHandleKeydown('min')}
+                  ></div>
+                  <div
+                    class="comp-handle"
+                    style="left: {compPercent(compMaxValue())}%;"
+                    role="slider"
+                    tabindex="0"
+                    aria-label="Maximum {draftFilterState.compType}"
+                    aria-valuenow={compMaxValue()}
+                    aria-valuemin={compMinValue()}
+                    aria-valuemax={compBounds().max}
+                    onpointerdown={startCompDrag('max')}
+                    onkeydown={handleCompHandleKeydown('max')}
+                  ></div>
                   {#if draftFilterState.idealPayEnabled}
                     <div
                       class="comp-ideal-marker"
