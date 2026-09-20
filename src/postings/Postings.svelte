@@ -182,11 +182,22 @@
     draftFilterState[key] = Math.max(clampComp(parsed), minVal);
   }
 
+  function salaryToHourly(v) { return clampToBounds(v / HOURS_PER_YEAR, COMP_TYPES.hourly); }
+  function hourlyToSalary(v) { return clampToBounds(v * HOURS_PER_YEAR, COMP_TYPES.salary); }
+  function clampToBounds(v, bounds) { return Math.min(bounds.max, Math.max(bounds.min, v)); }
+
   function setCompType(type) {
+    if (type === draftFilterState.compType) return;
+    if (type === 'hourly') {
+      draftFilterState.hourlyMin = Math.round(salaryToHourly(draftFilterState.salaryMin));
+      draftFilterState.hourlyMax = Math.round(salaryToHourly(draftFilterState.salaryMax));
+      draftFilterState.idealPay = Math.round(salaryToHourly(draftFilterState.idealPay));
+    } else {
+      draftFilterState.salaryMin = Math.round(hourlyToSalary(draftFilterState.hourlyMin));
+      draftFilterState.salaryMax = Math.round(hourlyToSalary(draftFilterState.hourlyMax));
+      draftFilterState.idealPay = Math.round(hourlyToSalary(draftFilterState.idealPay));
+    }
     draftFilterState.compType = type;
-    const minV = type === 'salary' ? draftFilterState.salaryMin : draftFilterState.hourlyMin;
-    const maxV = type === 'salary' ? draftFilterState.salaryMax : draftFilterState.hourlyMax;
-    draftFilterState.idealPay = Math.round((minV + maxV) / 2);
   }
 
   function startIdealDrag(event) {
