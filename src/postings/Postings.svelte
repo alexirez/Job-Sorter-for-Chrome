@@ -59,7 +59,7 @@
     { key: 'inPerson', label: 'In-person' },
     { key: 'remote', label: 'Remote' },
     { key: 'hybrid', label: 'Hybrid' },
-    { key: 'unclassified', label: 'Unclassified' }
+    { key: 'unknown', label: 'Unknown' }
   ];
   const POSTED_WITHIN = [
     { key: '24h', label: '24h' },
@@ -79,7 +79,7 @@
       hourlyMax: 80,
       idealPayEnabled: false,
       idealPay: 120000,
-      workType: { inPerson: true, remote: true, hybrid: true, unclassified: true },
+      workType: { inPerson: true, remote: true, hybrid: true, unknown: true },
       includeKeywords: [],
       excludeKeywords: [],
       aiFilterEnabled: false,
@@ -172,6 +172,7 @@
     const key = draftFilterState.compType === 'salary' ? 'salaryMin' : 'hourlyMin';
     const maxVal = compMaxValue();
     draftFilterState[key] = Math.min(clampComp(parsed), maxVal);
+    reclampIdealPay();
   }
 
   function setCompMax(raw) {
@@ -180,8 +181,16 @@
     const key = draftFilterState.compType === 'salary' ? 'salaryMax' : 'hourlyMax';
     const minVal = compMinValue();
     draftFilterState[key] = Math.max(clampComp(parsed), minVal);
+    reclampIdealPay();
   }
 
+  function reclampIdealPay() {
+    if (!draftFilterState.idealPayEnabled) return;
+    const minV = compMinValue();
+    const maxV = compMaxValue();
+    if (draftFilterState.idealPay < minV || draftFilterState.idealPay > maxV)
+      draftFilterState.idealPay = (minV + maxV) / 2;
+  }
   function salaryToHourly(v) { return clampToBounds(v / HOURS_PER_YEAR, COMP_TYPES.hourly); }
   function hourlyToSalary(v) { return clampToBounds(v * HOURS_PER_YEAR, COMP_TYPES.salary); }
   function clampToBounds(v, bounds) { return Math.min(bounds.max, Math.max(bounds.min, v)); }
@@ -236,11 +245,10 @@
         const rect = compTrackNode.getBoundingClientRect();
         const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
         const raw = clampComp(Math.round(min + ratio * (max - min)));
-        if (which === 'min') {
+        if (which === 'min')
           setCompMin(Math.min(raw, compMaxValue() - step));
-        } else {
+        else
           setCompMax(Math.max(raw, compMinValue() + step));
-        }
       }
       function onUp() {
         window.removeEventListener('pointermove', onMove);
@@ -259,11 +267,8 @@
       else if (event.key === 'ArrowRight') delta = step;
       else return;
       event.preventDefault();
-      if (which === 'min') {
-        setCompMin(compMinValue() + delta);
-      } else {
-        setCompMax(compMaxValue() + delta);
-      }
+      if (which === 'min') setCompMin(compMinValue() + delta);
+      else setCompMax(compMaxValue() + delta);
     };
   }
 
@@ -334,9 +339,8 @@
 
   function formatSalary(job) {
     if (job.salaryMin == null && job.salaryMax == null) return null;
-    if (job.salaryMin != null && job.salaryMax != null) {
+    if (job.salaryMin != null && job.salaryMax != null)
       return `${job.salaryMin.toLocaleString()}–${job.salaryMax.toLocaleString()}`;
-    }
     return (job.salaryMin ?? job.salaryMax).toLocaleString();
   }
 
@@ -596,8 +600,10 @@
                       type="checkbox"
                       class="sr-only-checkbox"
                       checked={draftFilterState.idealPayEnabled}
-                      onchange={() => (draftFilterState.idealPayEnabled = !draftFilterState.idealPayEnabled)}
-                    />
+                      onchange={() => {
+                        draftFilterState.idealPayEnabled = !draftFilterState.idealPayEnabled;
+                        reclampIdealPay();
+                      }}                    />
                   </span>
                 </label>
                 {#if draftFilterState.idealPayEnabled}
@@ -672,17 +678,17 @@
             </div>
 
             <div class="filter-section">
-              <div class="filter-section-header">
+              <label class="filter-section-header ai-filter-header">
                 <span>AI filter</span>
-                <label class="toggle-switch" class:on={draftFilterState.aiFilterEnabled}>
+                <span class="toggle-switch" class:on={draftFilterState.aiFilterEnabled}>
                   <input
                     type="checkbox"
                     class="sr-only-checkbox"
                     checked={draftFilterState.aiFilterEnabled}
                     onchange={() => (draftFilterState.aiFilterEnabled = !draftFilterState.aiFilterEnabled)}
                   />
-                </label>
-              </div>
+                </span>
+              </label>
               {#if draftFilterState.aiFilterEnabled}
                 <div class="filter-section-body">
                   <textarea
