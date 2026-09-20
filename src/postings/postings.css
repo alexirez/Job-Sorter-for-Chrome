@@ -112,6 +112,7 @@ body {
   max-width: calc(100vw - 40px);
   max-height: min(600px, calc(100vh - 80px));
   overflow-y: auto;
+  overflow-x: auto;
   overscroll-behavior: contain;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   padding: 1.1rem 1.25rem;

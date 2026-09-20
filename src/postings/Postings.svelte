@@ -189,13 +189,13 @@
   function setCompType(type) {
     if (type === draftFilterState.compType) return;
     if (type === 'hourly') {
-      draftFilterState.hourlyMin = Math.round(salaryToHourly(draftFilterState.salaryMin));
-      draftFilterState.hourlyMax = Math.round(salaryToHourly(draftFilterState.salaryMax));
-      draftFilterState.idealPay = Math.round(salaryToHourly(draftFilterState.idealPay));
+      draftFilterState.hourlyMin = salaryToHourly(draftFilterState.salaryMin);
+      draftFilterState.hourlyMax = salaryToHourly(draftFilterState.salaryMax);
+      draftFilterState.idealPay = salaryToHourly(draftFilterState.idealPay);
     } else {
-      draftFilterState.salaryMin = Math.round(hourlyToSalary(draftFilterState.hourlyMin));
-      draftFilterState.salaryMax = Math.round(hourlyToSalary(draftFilterState.hourlyMax));
-      draftFilterState.idealPay = Math.round(hourlyToSalary(draftFilterState.idealPay));
+      draftFilterState.salaryMin = hourlyToSalary(draftFilterState.hourlyMin);
+      draftFilterState.salaryMax = hourlyToSalary(draftFilterState.hourlyMax);
+      draftFilterState.idealPay = hourlyToSalary(draftFilterState.idealPay);
     }
     draftFilterState.compType = type;
   }
