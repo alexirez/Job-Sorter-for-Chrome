@@ -6,6 +6,7 @@ export { default as deleteIcon } from './delete-icon.svg?raw';
 export { default as fileTextIcon } from './file-text-icon.svg?raw';
 export { default as filterIcon } from './filter-icon.svg?raw';
 export { default as gearIcon } from './gear-icon.svg?raw';
+export { default as listIcon } from './list-icon.svg?raw';
 export { default as preferencesIcon } from './preferences-icon.svg?raw';
 export { default as questionMarkIcon } from './question-mark.svg?raw';
 export { default as refreshIcon } from './refresh-icon.svg?raw';

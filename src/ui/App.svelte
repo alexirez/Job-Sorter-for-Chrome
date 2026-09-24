@@ -1,9 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { fly } from 'svelte/transition';
-  import questionMarkIcon from './assets/icons/question-mark.svg?raw';
-  import gearIcon from './assets/icons/gear-icon.svg?raw';
-  import refreshIcon from './assets/icons/refresh-icon.svg?raw';
+  import { questionMarkIcon, gearIcon, refreshIcon, listIcon } from './assets/icons';
 
   const STORAGE_KEY = 'selectedModel';
   const PORT_STORAGE_KEY = 'ollamaPort';
@@ -143,6 +141,17 @@
   chrome.tabs.create({ url: chrome.runtime.getURL('postings.html') });
 }
 
+  // TODO: compute from real section-completion state
+  const detailsComplete = 2;
+  const detailsTotal = 3;
+
+  function statusLabel() {
+    if (loadingStatus === 'loading') return 'Loading';
+    if (loadingStatus === 'unloading') return 'Unloading';
+    if (loadingStatus === 'loaded') return 'Loaded';
+    return 'Idle';
+  }
+
   onMount(async () => {
     await loadSelectedModel();
     const portResult = await chrome.storage.local.get(PORT_STORAGE_KEY);
@@ -155,59 +164,68 @@
 <div class="popup">
   <div class="folder">
     <header class="topbar">
-      <h1>Job Sorter</h1>
+      <div class="brand">
+        <div class="progress-ring" style="--pct: {(detailsComplete / detailsTotal) * 360}deg;">
+          <span>{detailsComplete}/{detailsTotal}</span>
+        </div>
+        <div>
+          <h1>Job Sorter</h1>
+          <p class="brand-subtext">{detailsComplete} of {detailsTotal} details done</p>
+        </div>
+      </div>
       <button class="icon-btn settings-btn" onclick={openSettings} aria-label="Settings" title="Settings">
         {@html gearIcon}
       </button>
     </header>
 
-    <div class="field">
-      <label for="model-select">Selected model</label>
-      <div class="field-row">
-        <select id="model-select" value={selectedModel ?? ''} onchange={handleChange}>
-          <option value="">None</option>
-          {#each models as model}
-            <option value={model.name}>{model.name}</option>
-          {/each}
-        </select>
-        <button
-          class="icon-btn refresh-btn"
-          class:spinning={fetchingModels}
-          onclick={refreshModels}
-          disabled={fetchingModels}
-          aria-label="Refresh model list"
-          title="Refresh model list"
-        >
-          {@html refreshIcon}
-        </button>
+    <div class="model-card">
+      <div class="field">
+        <label for="model-select">Model</label>
+        <div class="field-row">
+          <select id="model-select" value={selectedModel ?? ''} onchange={handleChange}>
+            <option value="">None</option>
+            {#each models as model}
+              <option value={model.name}>{model.name}</option>
+            {/each}
+          </select>
+          <button
+            class="icon-btn refresh-btn"
+            class:spinning={fetchingModels}
+            onclick={refreshModels}
+            disabled={fetchingModels}
+            aria-label="Refresh model list"
+            title="Refresh model list"
+          >
+            {@html refreshIcon}
+          </button>
+        </div>
       </div>
-    </div>
 
-    {#if error}
-      <p class="note error">⚠ Failed to connect to Ollama on localhost:{ollamaPort}</p>
-    {:else}
-      <p class="note">Using Ollama on <span style="text-decoration: underline;">localhost:{ollamaPort}</span></p>
-    {/if}
+      {#if error}
+        <p class="note error">⚠ Failed to connect to Ollama on localhost:{ollamaPort}</p>
+      {:else}
+        <p class="note">Using Ollama on <span style="text-decoration: underline;">localhost:{ollamaPort}</span></p>
+      {/if}
 
-    <div class="load-row">
-      <div class="load-wrap">
-        <button class="load-btn" onclick={handleLoadClick} disabled={!selectedModel || loadingStatus === 'loading' || loadingStatus === 'unloading'}>
-        {#if loadingStatus === 'loading'}
-          Loading<span class="dots"><span>.</span><span>.</span><span>.</span></span>
-        {:else if loadingStatus === 'unloading'}
-          Unloading<span class="dots"><span>.</span><span>.</span><span>.</span></span>
-        {:else if loadingStatus === 'loaded'}
-          Unload Selected
-        {:else}
-          Load Selected
-        {/if}
-        </button>
-        {#if loadError}
-          <div class="error-bubble" transition:fly={{ y: 8, duration: 150 }}>
-            {loadError}
-          </div>
-        {/if}
-      </div>
+      <div class="load-row">
+        <div class="load-wrap">
+          <button class="load-btn" onclick={handleLoadClick} disabled={!selectedModel || loadingStatus === 'loading' || loadingStatus === 'unloading'}>
+          {#if loadingStatus === 'loading'}
+            Loading<span class="dots"><span>.</span><span>.</span><span>.</span></span>
+          {:else if loadingStatus === 'unloading'}
+            Unloading<span class="dots"><span>.</span><span>.</span><span>.</span></span>
+          {:else if loadingStatus === 'loaded'}
+            Unload Selected
+          {:else}
+            Load Selected
+          {/if}
+          </button>
+          {#if loadError}
+            <div class="error-bubble" transition:fly={{ y: 8, duration: 150 }}>
+              {loadError}
+            </div>
+          {/if}
+        </div>
         <div class="help-wrap">
           <button
             class="icon-btn help-btn"
@@ -230,9 +248,16 @@
             </div>
           {/if}
         </div>
+        <span class="status-stamp status-{loadingStatus ?? 'idle'}">{statusLabel()}</span>
+      </div>
     </div>
 
-    <button class="stamp-btn" onclick={openPostingsTab}>View Postings</button>
+    <button class="view-postings-btn" onclick={openPostingsTab}>
+      {@html listIcon}
+      View Postings
+    </button>
 
+    <p class="version-footer">v0.4.2</p>
+
+    </div>
   </div>
-</div>
