@@ -3,10 +3,15 @@
   import questionMarkIcon from '../ui/assets/icons/question-mark.svg?raw';
   import filterIcon from '../ui/assets/icons/filter-icon.svg?raw';
   import chevronIcon from '../ui/assets/icons/chevron-icon.svg?raw';
+  import chevronsIcon from '../ui/assets/icons/chevrons-icon.svg?raw';
   import deleteIcon from '../ui/assets/icons/delete-icon.svg?raw';
   import archiveIcon from '../ui/assets/icons/archive-icon.svg?raw';
   import applyIcon from '../ui/assets/icons/apply-icon.svg?raw';
   import uploadIcon from '../ui/assets/icons/upload-icon.svg?raw';
+  import userIcon from '../ui/assets/icons/user-icon.svg?raw';
+  import preferencesIcon from '../ui/assets/icons/preferences-icon.svg?raw';
+  import settingsIcon from '../ui/assets/icons/settings-icon.svg?raw';
+  import fileTextIcon from '../ui/assets/icons/file-text-icon.svg?raw';
   import './postings.css';
 
   let jobs = $state([]);
@@ -301,18 +306,30 @@
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  $effect(() => {
+    if (!activeDetailModal && !showResumesModal) return;
+    function onKey(e) {
+      if (e.key !== 'Escape') return;
+      activeDetailModal = null;
+      showResumesModal = false;
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   // Multi-select
   let selectedIds = $state(new Set());
 
-  // Resume upload popover (UI-only for now)
-  let showUploadPopover = $state(false);
-  let resumeFile = $state(null);
-
-  // Resizable side rails
-  let railLeftWidth = $state(64);
-  let railRightWidth = $state(64);
-  const RAIL_MIN = 48;
-  const RAIL_MAX = 420;
+  const SIDEBAR_WIDTH_EXPANDED = 240;
+  const SIDEBAR_WIDTH_COLLAPSED = 56;
+  let sidebarCollapsed = $state(false);
+  // Which details modal is open, if any — one flag instead of three
+  // booleans since only one can be open at a time and they share a shell.
+  let activeDetailModal = $state(null); // 'personal' | 'preferences' | null
+  let showResumesModal = $state(false);
+  // Resumes tagged with the titles they should be used for. UI-only for
+  // now — nothing is persisted or sent to the background script yet.
+  let resumes = $state([]);
 
   function statusCount(key) {
     if (key === 'all') return jobs.length;
@@ -395,51 +412,41 @@
   // TODO: kick off the automation pipeline
   function beginApplying() {}
 
-  function handleResumeUpload(e) {
+  function toggleSidebar() {
+    sidebarCollapsed = !sidebarCollapsed;
+  }
+
+  function openDetailModal(which) {
+    activeDetailModal = which;
+  }
+
+  function closeDetailModal() {
+    activeDetailModal = null;
+  }
+
+  function addResume(e) {
     const file = e.target.files?.[0];
-    if (file) resumeFile = file;
+    if (!file) return;
+    resumes = [...resumes, { id: crypto.randomUUID(), name: file.name, tags: [] }];
+    e.target.value = '';
   }
 
-  // Draggable rail resize. This only ever changes a width number via
-  // pointer events — it never touches scroll behavior, which is handled
-  // purely by CSS (see postings.css) so wheel input still bubbles to the
-  // document no matter where the cursor is.
-  function startResize(side) {
-    return (event) => {
-      event.preventDefault();
-      function onMove(e) {
-        const raw = side === 'left' ? e.clientX : window.innerWidth - e.clientX;
-        const clamped = Math.min(RAIL_MAX, Math.max(RAIL_MIN, raw));
-        if (side === 'left') railLeftWidth = clamped;
-        else railRightWidth = clamped;
-      }
-      function onUp() {
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-      }
-      window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerup', onUp);
-    };
+  function removeResume(id) {
+    resumes = resumes.filter((r) => r.id !== id);
   }
 
-  function handleResizeKeydown(side) {
-    return (event) => {
-      const step = 8;
-      let delta = 0;
-      if (event.key === 'ArrowLeft') delta = side === 'left' ? -step : step;
-      else if (event.key === 'ArrowRight') delta = side === 'left' ? step : -step;
-      else return;
-      event.preventDefault();
-      const current = side === 'left' ? railLeftWidth : railRightWidth;
-      const next = Math.min(RAIL_MAX, Math.max(RAIL_MIN, current + delta));
-      if (side === 'left') railLeftWidth = next;
-      else railRightWidth = next;
-    };
+  function addResumeTag(id, rawValue) {
+    const value = rawValue.trim();
+    if (!value) return;
+    resumes = resumes.map((r) => (r.id === id ? { ...r, tags: [...r.tags, value] } : r));
+  }
+
+  function removeResumeTag(id, index) {
+    resumes = resumes.map((r) => (r.id === id ? { ...r, tags: r.tags.filter((_, i) => i !== index) } : r));
   }
 </script>
 
-<div class="postings-page" style="--rail-left-w: {railLeftWidth}px; --rail-right-w: {railRightWidth}px;">
-  <div class="fixed-topbar">
+  <div class="postings-page" style="--sidebar-w: {sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px;">  <div class="fixed-topbar">
     <div class="segmented-control">
       {#each STATUS_TABS as tab}
         <button class="segment" class:active={activeStatus === tab.key} onclick={() => (activeStatus = tab.key)}>
@@ -727,69 +734,182 @@
     {@html applyIcon}
     Begin Applying
   </button>
+  {#if loadingState === 'filtering'}
+    <div class="applying-filters-wrap">
+      <div class="applying-filters-pill">
+        <span class="applying-filters-spinner"></span>
+        Applying filters…
+      </div>
+    </div>
+  {/if}
 
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex -- resize handle is a focusable ARIA separator (has aria-valuenow/min/max) -->
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers implement the drag-to-resize behavior -->
-  <div
-      class="resize-handle resize-left"
-      role="separator"
-      aria-orientation="vertical"
-      aria-label="Resize left sidebar"
-      aria-valuenow={railLeftWidth}
-      aria-valuemin={RAIL_MIN}
-      aria-valuemax={RAIL_MAX}
-      tabindex="0"
-      onpointerdown={startResize('left')}
-      onkeydown={handleResizeKeydown('left')}
-    ></div>
-    <!-- svelte-ignore a11y_no_noninteractive_tabindex -- resize handle is a focusable ARIA separator (has aria-valuenow/min/max) -->
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers implement the drag-to-resize behavior -->
+    <aside class="details-sidebar" class:collapsed={sidebarCollapsed}>
+    <div class="sidebar-header">
+      <button
+        class="sidebar-collapse-btn"
+        onclick={toggleSidebar}
+        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={sidebarCollapsed ? 'Expand' : 'Collapse'}
+      >
+        <span class="sidebar-collapse-icon" class:flipped={sidebarCollapsed}>{@html chevronsIcon}</span>
+      </button>
+    </div>
+
+    <div class="sidebar-scroll">
+      <div class="sidebar-section">
+        <div class="fill-details-row">
+          <!-- TODO: compute this from real section-completion state -->
+          <div class="completeness-ring"><span>2/3</span></div>
+          <div>
+            <p class="sidebar-heading sidebar-label">Fill details</p>
+            <p class="sidebar-subtext sidebar-label">2 of 3 sections done</p>
+          </div>
+        </div>
+        <button class="sidebar-btn" onclick={() => openDetailModal('personal')}>
+          {@html userIcon}
+          <span class="sidebar-label">Edit personal info</span>
+        </button>
+        <button class="sidebar-btn" onclick={() => openDetailModal('preferences')}>
+          {@html preferencesIcon}
+          <span class="sidebar-label">Edit preferences</span>
+        </button>
+      </div>
+
+      <div class="sidebar-section">
+        <button class="sidebar-btn sidebar-btn-outline" onclick={() => (showResumesModal = true)}>
+          {@html uploadIcon}
+          <span class="sidebar-label" style="flex:1;">Upload resume</span>
+          {#if resumes.length > 0}
+            <span class="sidebar-count sidebar-label">{resumes.length}</span>
+          {/if}
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section sidebar-section-plain">
+        <button class="sidebar-btn" title="View archived">
+          {@html archiveIcon}
+          <span class="sidebar-label">View archived</span>
+        </button>
+        <button class="sidebar-btn">
+          {@html settingsIcon}
+          <span class="sidebar-label">Settings</span>
+        </button>
+        <button class="sidebar-btn">
+          {@html questionMarkIcon}
+          <span class="sidebar-label">Help</span>
+        </button>
+      </div>
+
+      <p class="sidebar-stat sidebar-label">{jobs.length} postings tracked this week</p>
+    </div>
+
+    <p class="sidebar-version sidebar-label">v0.4.2</p>
+  </aside>
+
+  {#if activeDetailModal}
     <div
-      class="resize-handle resize-right"
-      role="separator"
-      aria-orientation="vertical"
-      aria-label="Resize right sidebar"
-      aria-valuenow={railRightWidth}
-      aria-valuemin={RAIL_MIN}
-      aria-valuemax={RAIL_MAX}
+      class="filter-menu-backdrop"
+      role="button"
       tabindex="0"
-      onpointerdown={startResize('right')}
-      onkeydown={handleResizeKeydown('right')}
-    ></div>
-
-    {#if loadingState === 'filtering'}
-      <div class="applying-filters-wrap">
-        <div class="applying-filters-pill">
-          <span class="applying-filters-spinner"></span>
-          Applying filters…
+      aria-label="Close"
+      onclick={closeDetailModal}
+      onkeydown={(e) => { if (e.key === 'Escape') closeDetailModal(); }}
+    >
+      <div
+        class="custom-filter-menu compact"
+        role="dialog"
+        aria-modal="true"
+        aria-label={activeDetailModal === 'personal' ? 'Edit personal info' : 'Edit preferences'}
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={(e) => { if (e.key === 'Escape') closeDetailModal(); e.stopPropagation(); }}
+      >
+        <div class="filter-popup-header">
+          <span>{activeDetailModal === 'personal' ? 'Edit personal info' : 'Edit preferences'}</span>
+          <button class="icon-btn filter-popup-close" onclick={closeDetailModal} aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
+          </button>
+        </div>
+        {#if activeDetailModal === 'personal'}
+          <p class="filter-hint"><!-- TODO: real fields -->Name, email, phone, and links used to prefill applications.</p>
+        {:else}
+          <p class="filter-hint"><!-- TODO: real fields -->Auto-fill screening questions, and which listings to skip.</p>
+        {/if}
+        <div class="filter-popup-footer">
+          <button class="chip" onclick={closeDetailModal}>Close</button>
+          <button class="chip apply-btn" onclick={closeDetailModal}>Save changes</button>
         </div>
       </div>
-    {/if}
+    </div>
+  {/if}
 
-  <nav class="rail rail-left">
-    <button class="rail-btn text-btn" title="View archived">Old</button>
-  </nav>
+  {#if showResumesModal}
+    <div
+      class="filter-menu-backdrop"
+      role="button"
+      tabindex="0"
+      aria-label="Close"
+      onclick={() => (showResumesModal = false)}
+      onkeydown={(e) => { if (e.key === 'Escape') showResumesModal = false; }}
+    >
+      <div class="custom-filter-menu compact" role="dialog" aria-modal="true" aria-label="Resumes" onclick={(e) => e.stopPropagation()}>
+        <div class="filter-popup-header">
+          <span>Resumes</span>
+          <button class="icon-btn filter-popup-close" onclick={() => (showResumesModal = false)} aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
+          </button>
+        </div>
+        <p class="filter-hint">Tag each resume with the titles it should be used for.</p>
 
-  <nav class="rail rail-right">
-    <button class="rail-btn" class:active={showUploadPopover} onclick={() => (showUploadPopover = !showUploadPopover)} aria-label="Upload resume" title="Upload resume">
-      {@html uploadIcon}
-    </button>
+        <div class="resumes-list">
+          {#each resumes as resume (resume.id)}
+            <div class="resume-row">
+              <div class="resume-row-top">
+                {@html fileTextIcon}
+                <span class="resume-name">{resume.name}</span>
+                <button class="icon-btn" onclick={() => removeResume(resume.id)} aria-label="Remove {resume.name}">
+                  {@html deleteIcon}
+                </button>
+              </div>
+              <div class="resume-tags">
+                {#each resume.tags as tag, i}
+                  <span class="keyword-pill include">
+                    {tag}
+                    <button class="keyword-pill-remove" onclick={() => removeResumeTag(resume.id, i)} aria-label="Remove {tag}">×</button>
+                  </span>
+                {/each}
+                <input
+                  class="resume-tag-input"
+                  placeholder="add a title tag..."
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                      e.preventDefault();
+                      addResumeTag(resume.id, e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          {:else}
+            <p class="note">No resumes uploaded yet.</p>
+          {/each}
+        </div>
 
-    {#if showUploadPopover}
-      <div class="upload-popover">
-        {#if resumeFile}
-          <p class="upload-filename">📄 {resumeFile.name}</p>
-          <button class="link-btn" onclick={() => (resumeFile = null)}>Remove</button>
-        {:else}
-          <p class="upload-text">Drop resume or</p>
-          <label class="upload-btn">
-            Browse
-            <input type="file" accept=".pdf,.doc,.docx" hidden onchange={handleResumeUpload} />
-          </label>
-        {/if}
+        <label class="add-resume-dropzone">
+          {@html uploadIcon}
+          <span>Add another resume</span>
+          <input type="file" accept=".pdf,.doc,.docx" hidden onchange={addResume} />
+        </label>
+
+        <div class="filter-popup-footer">
+          <button class="chip" onclick={() => (showResumesModal = false)}>Close</button>
+          <button class="chip apply-btn" onclick={() => (showResumesModal = false)}>Save changes</button>
+        </div>
       </div>
-    {/if}
-  </nav>
+    </div>
+  {/if}
 
   <div class="content-flow">
     {#if loadingState === 'loading'}
