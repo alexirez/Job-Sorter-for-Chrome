@@ -5,6 +5,8 @@
   import chevronIcon from '../ui/assets/icons/chevron-icon.svg?raw';
   import deleteIcon from '../ui/assets/icons/delete-icon.svg?raw';
   import archiveIcon from '../ui/assets/icons/archive-icon.svg?raw';
+  import applyIcon from '../ui/assets/icons/apply-icon.svg?raw';
+  import uploadIcon from '../ui/assets/icons/upload-icon.svg?raw';
   import './postings.css';
 
   let jobs = $state([]);
@@ -760,10 +762,10 @@
 
   <nav class="rail rail-right">
     <button class="rail-btn accent" onclick={beginApplying} aria-label="Begin Applying" title="Begin Applying">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      {@html applyIcon}
     </button>
     <button class="rail-btn" class:active={showUploadPopover} onclick={() => (showUploadPopover = !showUploadPopover)} aria-label="Upload resume" title="Upload resume">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round" /><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      {@html uploadIcon}
     </button>
 
     {#if showUploadPopover}
