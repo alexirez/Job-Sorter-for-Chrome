@@ -308,6 +308,27 @@ body {
 }
 .link-btn { background: none; border: none; color: var(--ink-muted); font-size: 11px; text-decoration: underline; cursor: pointer; }
 
+.begin-applying-btn {
+  position: fixed;
+  top: 14px;
+  right: calc(var(--rail-right-w) + 12px);
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 18px;
+  background: var(--new);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(31, 41, 51, 0.2);
+}
+.begin-applying-btn svg { width: 15px; height: 15px; }
+.begin-applying-btn:hover { opacity: 0.9; }
+
 .content-flow {
   margin: 112px calc(var(--rail-right-w) + 12px) 60px calc(var(--rail-left-w) + 12px);
   display: flex;

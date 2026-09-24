@@ -718,6 +718,16 @@
     {/if}
   </div>
 
+  <button
+    class="begin-applying-btn"
+    onclick={beginApplying}
+    aria-label="Begin Applying"
+    title="Begin Applying"
+  >
+    {@html applyIcon}
+    Begin Applying
+  </button>
+
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -- resize handle is a focusable ARIA separator (has aria-valuenow/min/max) -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -- pointer/keyboard handlers implement the drag-to-resize behavior -->
   <div
@@ -761,9 +771,6 @@
   </nav>
 
   <nav class="rail rail-right">
-    <button class="rail-btn accent" onclick={beginApplying} aria-label="Begin Applying" title="Begin Applying">
-      {@html applyIcon}
-    </button>
     <button class="rail-btn" class:active={showUploadPopover} onclick={() => (showUploadPopover = !showUploadPopover)} aria-label="Upload resume" title="Upload resume">
       {@html uploadIcon}
     </button>
