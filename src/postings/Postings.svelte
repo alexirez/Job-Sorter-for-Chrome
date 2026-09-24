@@ -1,17 +1,10 @@
 <script>
   import { onMount } from 'svelte';
-  import questionMarkIcon from '../ui/assets/icons/question-mark.svg?raw';
-  import filterIcon from '../ui/assets/icons/filter-icon.svg?raw';
-  import chevronIcon from '../ui/assets/icons/chevron-icon.svg?raw';
-  import chevronsIcon from '../ui/assets/icons/chevrons-icon.svg?raw';
-  import deleteIcon from '../ui/assets/icons/delete-icon.svg?raw';
-  import archiveIcon from '../ui/assets/icons/archive-icon.svg?raw';
-  import applyIcon from '../ui/assets/icons/apply-icon.svg?raw';
-  import uploadIcon from '../ui/assets/icons/upload-icon.svg?raw';
-  import userIcon from '../ui/assets/icons/user-icon.svg?raw';
-  import preferencesIcon from '../ui/assets/icons/preferences-icon.svg?raw';
-  import settingsIcon from '../ui/assets/icons/settings-icon.svg?raw';
-  import fileTextIcon from '../ui/assets/icons/file-text-icon.svg?raw';
+  import {
+     questionMarkIcon, filterIcon, chevronIcon, deleteIcon, archiveIcon,
+     applyIcon, uploadIcon, chevronsIcon, userIcon, preferencesIcon,
+     settingsIcon, fileTextIcon
+  } from '../ui/assets/icons';
   import './postings.css';
 
   let jobs = $state([]);

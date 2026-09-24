@@ -1,0 +1,14 @@
+export { default as applyIcon } from './apply-icon.svg?raw';
+export { default as archiveIcon } from './archive-icon.svg?raw';
+export { default as chevronIcon } from './chevron-icon.svg?raw';
+export { default as chevronsIcon } from './chevrons-icon.svg?raw';
+export { default as deleteIcon } from './delete-icon.svg?raw';
+export { default as fileTextIcon } from './file-text-icon.svg?raw';
+export { default as filterIcon } from './filter-icon.svg?raw';
+export { default as gearIcon } from './gear-icon.svg?raw';
+export { default as preferencesIcon } from './preferences-icon.svg?raw';
+export { default as questionMarkIcon } from './question-mark.svg?raw';
+export { default as refreshIcon } from './refresh-icon.svg?raw';
+export { default as settingsIcon } from './settings-icon.svg?raw';
+export { default as uploadIcon } from './upload-icon.svg?raw';
+export { default as userIcon } from './user-icon.svg?raw';
