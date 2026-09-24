@@ -822,6 +822,7 @@
         role="dialog"
         aria-modal="true"
         aria-label={activeDetailModal === 'personal' ? 'Edit personal info' : 'Edit preferences'}
+        tabindex="-1"
         onclick={(e) => e.stopPropagation()}
         onkeydown={(e) => { if (e.key === 'Escape') closeDetailModal(); e.stopPropagation(); }}
       >
@@ -853,7 +854,15 @@
       onclick={() => (showResumesModal = false)}
       onkeydown={(e) => { if (e.key === 'Escape') showResumesModal = false; }}
     >
-      <div class="custom-filter-menu compact" role="dialog" aria-modal="true" aria-label="Resumes" onclick={(e) => e.stopPropagation()}>
+      <div
+        class="custom-filter-menu compact"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Resumes"
+        tabindex="-1"
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={(e) => { if (e.key === 'Escape') showResumesModal = false; e.stopPropagation(); }}
+      >    
         <div class="filter-popup-header">
           <span>Resumes</span>
           <button class="icon-btn filter-popup-close" onclick={() => (showResumesModal = false)} aria-label="Close">
