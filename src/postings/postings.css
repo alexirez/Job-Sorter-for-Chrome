@@ -355,6 +355,39 @@ body {
 .note { font-size: 13px; color: var(--ink-muted); }
 .end-of-list { text-align: center; font-size: 12px; color: var(--ink-muted); padding: 20px 0; }
 
+.applying-filters-wrap {
+  position: fixed;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  pointer-events: none;
+}
+.applying-filters-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 20px;
+  padding: 10px 22px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--paper);
+  box-shadow: 0 4px 10px rgba(31, 41, 51, 0.35);
+}
+.applying-filters-spinner {
+  width: 16px; height: 16px;
+  border: 2.5px solid rgba(244, 246, 248, 0.25);
+  border-top-color: var(--paper);
+  border-radius: 50%;
+  display: inline-block;
+  animation: applying-filters-spin 0.8s linear infinite;
+}
+@keyframes applying-filters-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 700px) {
   .postings-page { --rail-left-w: 52px !important; --rail-right-w: 52px !important; }
   .resize-handle { display: none; }

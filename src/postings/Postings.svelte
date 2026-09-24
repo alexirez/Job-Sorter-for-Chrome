@@ -6,7 +6,7 @@
   import './postings.css';
 
   let jobs = $state([]);
-  let loading = $state(true);
+  let loadingState = $state('loading'); // 'loading' | 'idle' | 'filtering'
   let loadError = $state('');
 
   let selectAllNode;
@@ -19,7 +19,7 @@
     } catch (err) {
       loadError = err.message;
     } finally {
-      loading = false;
+      loadingState = 'idle';
     }
   });
 
@@ -275,8 +275,11 @@
   function applyFilters() {
     appliedFilterState = $state.snapshot(draftFilterState);
     showFilterMenu = false;
+    loadingState = 'filtering';
     // TODO: recompute filteredJobs / message background using appliedFilterState
     // (postedWithin, salary/hourly range, workType, include/exclude keywords, AI filter)
+    // Placeholder timing until the real query/scoring pass exists.
+    setTimeout(() => { loadingState = 'idle'; }, 3200);
   }
 
   function clearDraftFilters() {
@@ -740,6 +743,15 @@
       onkeydown={handleResizeKeydown('right')}
     ></div>
 
+    {#if loadingState === 'filtering'}
+      <div class="applying-filters-wrap">
+        <div class="applying-filters-pill">
+          <span class="applying-filters-spinner"></span>
+          Applying filters…
+        </div>
+      </div>
+    {/if}
+
   <nav class="rail rail-left">
     <button class="rail-btn text-btn" title="View archived">Old</button>
   </nav>
@@ -769,7 +781,7 @@
   </nav>
 
   <div class="content-flow">
-    {#if loading}
+    {#if loadingState === 'loading'}
       <p class="note">Loading postings…</p>
     {:else if loadError}
       <p class="note">Couldn't load postings: {loadError}</p>
