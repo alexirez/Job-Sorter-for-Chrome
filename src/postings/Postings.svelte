@@ -3,6 +3,8 @@
   import questionMarkIcon from '../ui/assets/icons/question-mark.svg?raw';
   import filterIcon from '../ui/assets/icons/filter-icon.svg?raw';
   import chevronIcon from '../ui/assets/icons/chevron-icon.svg?raw';
+  import deleteIcon from '../ui/assets/icons/delete-icon.svg?raw';
+  import archiveIcon from '../ui/assets/icons/archive-icon.svg?raw';
   import './postings.css';
 
   let jobs = $state([]);
@@ -463,10 +465,10 @@
         <div class="selection-actions">
           <span class="selection-count">{selectedIds.size} selected</span>
           <button class="icon-btn" onclick={archiveSelected} aria-label="Mark as Old" title="Mark as Old">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18M5 7v12a1 1 0 001 1h12a1 1 0 001-1V7M9 11h6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            {@html archiveIcon}
           </button>
           <button class="icon-btn danger" onclick={deleteSelected} aria-label="Delete permanently" title="Delete permanently">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13a2 2 0 002 2h4a2 2 0 002-2l1-13" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            {@html deleteIcon}
           </button>
         </div>
       {:else}
