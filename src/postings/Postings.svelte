@@ -303,7 +303,7 @@
     if (!activeDetailModal && !showResumesModal) return;
     function onKey(e) {
       if (e.key !== 'Escape') return;
-      activeDetailModal = null;
+      closeDetailModal();
       showResumesModal = false;
     }
     window.addEventListener('keydown', onKey);
@@ -318,8 +318,8 @@
   let sidebarCollapsed = $state(false);
   let activeDetailModal = $state(null); // 'personal' | 'preferences' | null
   let showResumesModal = $state(false);
-  let wipeConfirming = $state(false);
-  let wiping = $state(false);
+  let wipeTarget = $state(null);  // 'personal' | 'postings' | null — which button is armed
+  let wiping = $state(null);      // 'personal' | 'postings' | null — which is in flight
   let wipeError = $state('');
   let wipeConfirmTimeout;
   let resumes = $state([]);
@@ -412,7 +412,7 @@
 
   function closeDetailModal() {
     activeDetailModal = null;
-    wipeConfirming = false;
+    wipeTarget = null;
     wipeError = '';
     clearTimeout(wipeConfirmTimeout);
   }
@@ -438,22 +438,23 @@
     resumes = resumes.map((r) => (r.id === id ? { ...r, tags: r.tags.filter((_, i) => i !== index) } : r));
   }
 
-  function requestWipe() {
-    if (!wipeConfirming) {
-      wipeConfirming = true;
-      clearTimeout(wipeConfirmTimeout);
-      wipeConfirmTimeout = setTimeout(() => (wipeConfirming = false), 4000);
-      return;
-    }
-    performWipe();
-  }
-
-  async function performWipe() {
+function requestWipe(target) {
+  if (wipeTarget !== target) {
+    wipeTarget = target;
     clearTimeout(wipeConfirmTimeout);
-    wipeConfirming = false;
-    wiping = true;
-    wipeError = '';
-    try {
+    wipeConfirmTimeout = setTimeout(() => (wipeTarget = null), 4000);
+    return;
+  }
+  performWipe(target);
+}
+
+async function performWipe(target) {
+  clearTimeout(wipeConfirmTimeout);
+  wipeTarget = null;
+  wiping = target;
+  wipeError = '';
+  try {
+    if (target === 'postings') {
       const response = await chrome.runtime.sendMessage({ type: 'postings:wipeJobs' });
       if (!response.ok) throw new Error(response.error);
       jobs = [];
@@ -461,12 +462,17 @@
       expandedIds = new Set();
       rawOpenIds = new Set();
       activeDetailModal = null;
-    } catch (err) {
-      wipeError = err.message;
-    } finally {
-      wiping = false;
+    } else if (target === 'personal') {
+      // TODO: no personal-info storage exists yet — wire this up once
+      // Edit personal info actually persists something to wipe.
+      throw new Error('Not implemented yet');
     }
+  } catch (err) {
+    wipeError = err.message;
+  } finally {
+    wiping = null;
   }
+}
 </script>
 
   <div class="postings-page" style="--sidebar-w: {sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px;">  <div class="fixed-topbar">
@@ -841,7 +847,9 @@
       onkeydown={(e) => { if (e.key === 'Escape') closeDetailModal(); }}
     >
       <div
-        class="custom-filter-menu compact"
+        class="custom-filter-menu"
+        class:compact={activeDetailModal !== 'help'}
+        class:help-wide={activeDetailModal === 'help'}
         role="dialog"
         aria-modal="true"
         aria-label={activeDetailModal === 'personal' ? 'Edit personal info'
@@ -850,12 +858,12 @@
         onclick={(e) => e.stopPropagation()}
         onkeydown={(e) => { if (e.key === 'Escape') closeDetailModal(); e.stopPropagation(); }}
       >
-        <div class="filter-popup-header">
-          <span>
-            {activeDetailModal === 'personal' ? 'Edit personal info'
-             : activeDetailModal === 'preferences' ? 'Edit preferences'
-             : 'Help'}
-          </span>
+        <div class="filter-popup-header" class:help-header={activeDetailModal === 'help'}>
+          {#if activeDetailModal === 'help'}
+            <span class="help-qmark" aria-hidden="true">?</span>
+          {:else}
+            <span>{activeDetailModal === 'personal' ? 'Edit personal info' : 'Edit preferences'}</span>
+          {/if}
           <button class="icon-btn filter-popup-close" onclick={closeDetailModal} aria-label="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
           </button>
@@ -865,36 +873,80 @@
         {:else if activeDetailModal === 'preferences'}
           <p class="filter-hint"><!-- TODO: real fields -->Auto-fill screening questions, and which listings to skip.</p>
         {:else}
-          <p class="filter-hint"><!-- TODO: real help content --></p>
+          <div class="help-hero">
+            <span class="help-gh-badge">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            </span>
+            <h2 class="help-heading">Have any questions?<br>Let me know.</h2>
+            <p class="help-subtext">Job Sorter is open source. File a bug, request a feature, or just say hi.</p>
+            <a class="help-gh-cta" href="https://github.com/YOUR-USERNAME/job-sorter" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+              View on GitHub
+            </a>
+            <!-- Fixed placeholder for now — swap for a real last-fetch/last-commit
+                 timestamp once one exists, and branch dot color/label off staleness. -->
+            <span class="help-status-pill" title="Last updated: September 2026">
+              <span class="help-status-dot"></span>
+              Actively maintained
+            </span>
+          </div>
 
-          <div class="danger-zone">
-            <p class="sidebar-heading" style="font-size:13px; margin:0 0 4px;">Start over</p>
-            <p class="filter-hint">Permanently deletes every stored posting and resets the database. This can't be undone.</p>
+          <div class="help-data-processing">
+            <p class="help-section-heading">Data processing</p>
+            <p class="help-data-text">
+              Your data is stored only on your own device. AI features are run locally, and only
+              data you agree to share will be given out. This can be configured in
+              <button class="help-inline-link" onclick={() => (activeDetailModal = 'preferences')}>Edit preferences</button>.
+            </p>
+          </div>
+
+          <div class="help-start-over">
+            <p class="help-section-heading">Start over</p>
+            <p class="filter-hint" style="margin:0 0 12px;">These actions can't be undone.</p>
+
             <button
-              class="chip wipe-btn"
-              class:confirming={wipeConfirming}
-              disabled={wiping}
-              onclick={requestWipe}
+              class="help-action-btn"
+              class:confirming={wipeTarget === 'personal'}
+              disabled={wiping === 'personal'}
+              onclick={() => requestWipe('personal')}
             >
-              {#if wiping}
-                Wiping…
-              {:else if wipeConfirming}
-                Click again to confirm
-              {:else}
-                Wipe job postings
+              <span class="action-title">
+                {#if wiping === 'personal'}Wiping…
+                {:else if wipeTarget === 'personal'}Click again to confirm
+                {:else}Wipe personal info{/if}
+              </span>
+              {#if wipeTarget !== 'personal' && wiping !== 'personal'}
+                <span class="action-desc">Clears your saved name, contact details, and preferences.</span>
               {/if}
             </button>
+
+            <button
+              class="help-action-btn danger"
+              class:confirming={wipeTarget === 'postings'}
+              disabled={wiping === 'postings'}
+              onclick={() => requestWipe('postings')}
+            >
+              <span class="action-title">
+                {#if wiping === 'postings'}Wiping…
+                {:else if wipeTarget === 'postings'}Click again to confirm
+                {:else}Wipe job postings{/if}
+              </span>
+              {#if wipeTarget !== 'postings' && wiping !== 'postings'}
+                <span class="action-desc">Deletes every stored posting and resets the database.</span>
+              {/if}
+            </button>
+
             {#if wipeError}
               <p class="filter-hint wipe-error">Couldn't wipe: {wipeError}</p>
             {/if}
           </div>
         {/if}
-        <div class="filter-popup-footer">
-          <button class="chip" onclick={closeDetailModal}>Close</button>
-          {#if activeDetailModal !== 'help'}
+        {#if activeDetailModal !== 'help'}
+          <div class="filter-popup-footer">
+            <button class="chip" onclick={closeDetailModal}>Close</button>
             <button class="chip apply-btn" onclick={closeDetailModal}>Save changes</button>
-          {/if}
-        </div>
+          </div>
+        {/if}
       </div>
     </div>
   {/if}
