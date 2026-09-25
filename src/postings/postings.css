@@ -257,7 +257,13 @@ body {
 .sidebar-collapse-icon { display: flex; width: 14px; height: 14px; transition: transform 0.18s ease; }
 .sidebar-collapse-icon.flipped { transform: scaleX(-1); }
 
-.sidebar-scroll { flex: 1; overflow-y: auto; }
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* legacy Edge/IE */
+}
+.sidebar-scroll::-webkit-scrollbar { display: none; } /* Chrome/Safari/Edge Chromium */
 .sidebar-section { padding: 0 12px 12px; }
 .sidebar-section-plain { display: flex; flex-direction: column; gap: 2px; }
 .sidebar-divider { height: 1px; background: var(--border-soft); margin: 4px 12px 12px; }
