@@ -22,10 +22,10 @@ async function upsertJob(job) {
   await initDB();
   const sql = `
     INSERT INTO jobs (
-      id, source, sourceId, title, company, location, remote, description,
-      employmentType, salaryMin, salaryMax, salaryCurrency, url, postedAt,
-      fetchedAt, status, filteredOutAt, shortlistedAt, appliedAt, raw
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      id, source, sourceId, title, company, location, workType, description,
+      employmentType, minSalary, maxSalary, minHourly, maxHourly, currency,
+      url, postedAt, fetchedAt, status, filteredOutAt, shortlistedAt, appliedAt, raw
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       description = excluded.description,
       fetchedAt = excluded.fetchedAt,
@@ -33,9 +33,10 @@ async function upsertJob(job) {
   `;
   const params = [
     job.id, job.source, job.sourceId, job.title, job.company, job.location,
-    job.remote === null ? null : job.remote ? 1 : 0,
-    job.description, job.employmentType, job.salaryMin, job.salaryMax,
-    job.salaryCurrency, job.url, job.postedAt, job.fetchedAt, job.status,
+    job.workType ?? null,
+    job.description, job.employmentType,
+    job.minSalary, job.maxSalary, job.minHourly, job.maxHourly, job.currency,
+    job.url, job.postedAt, job.fetchedAt, job.status,
     job.filteredOutAt, job.shortlistedAt, job.appliedAt, job.raw
   ];
   await sqlite3.run(db, sql, params);
@@ -43,8 +44,7 @@ async function upsertJob(job) {
 }
 
 function toJob(row, columns) {
-  const obj = Object.fromEntries(columns.map((col, i) => [col, row[i]]));
-  return { ...obj, remote: obj.remote === null ? null : !!obj.remote };
+  return Object.fromEntries(columns.map((col, i) => [col, row[i]]));
 }
 
 async function getJobsByStatus(status) {

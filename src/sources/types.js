@@ -10,15 +10,19 @@
  * @property {string} title                - Always present, if somehow missing drop the posting
  * @property {string|null} company         - possibly null
  * @property {string|null} location        - Free-text location. Null if remote-only or unspecified
- * @property {boolean|null} remote         - true/false if the source says so explicitly, null if unknown
+ * @property {number} workType             - 0=unknown 1=onsite 2=remote 3=hybrid
  * @property {string|null} description     - Often an EXCERPT, not the full posting (e.g. Adzuna truncates)
  *                                           Null only if the source gives literally nothing
  * @property {string|null} employmentType  - "full_time", "contract", etc. Null if unspecified
  *
  * --- Compensation ---
- * @property {number|null} salaryMin
- * @property {number|null} salaryMax
- * @property {string|null} salaryCurrency  - ISO code (e.g. "USD"). Null if no salary data at all.
+ * @property {number|null} minSalary   - Annual figure, as given by the source. Null if the source didn't give one
+ * @property {number|null} maxSalary   - Annual figure, as given by the source. Null if the source didn't give one
+ * @property {number|null} minHourly   - Hourly figure, as given by the source. Null if the source didn't give one.
+ *                                       Adapters must NOT derive this from salaryMin/salaryMax. That conversion
+ *                                       happens at query time using the user's configurable hours-per-year constant.
+ * @property {number|null} maxHourly   - Hourly figure, as given by the source. Same rule as minHourly.
+ * @property {string|null} currency    - ISO code (e.g. "USD"). Null if no salary/hourly data at all.
  *
  * --- Links & timing ---
  * @property {string} url            - Link to the posting (or source's redirect). Always present; a posting without a link is useless

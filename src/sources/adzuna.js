@@ -1,14 +1,23 @@
 import { buildJobId, JOB_STATUS } from './types.js';
+import { WORK_TYPE } from '../shared/workType.js';
 
 const ADZUNA_APP_ID = import.meta.env.VITE_ADZUNA_APP_ID;
 const ADZUNA_APP_KEY = import.meta.env.VITE_ADZUNA_APP_KEY;
 const BASE_URL = 'https://api.adzuna.com/v1/api/jobs';
 
+// Adzuna gives country as a 2-letter code but no explicit currency field.
+// Best-effort map for the countries Adzuna supports; falls back to USD.
+const CURRENCY_BY_COUNTRY = {
+  us: 'USD', gb: 'GBP', ca: 'CAD', au: 'AUD', de: 'EUR', fr: 'EUR',
+  nl: 'EUR', at: 'EUR', be: 'EUR', it: 'EUR', es: 'EUR', pl: 'PLN',
+  in: 'INR', sg: 'SGD', za: 'ZAR', nz: 'NZD', mx: 'MXN', br: 'BRL'
+};
+
 /**
  * Converts one raw Adzuna result into NormalizedJob shape.
  * @returns {import('./types.js').NormalizedJob}
  */
-function normalizeAdzunaJob(raw) {
+function normalizeAdzunaJob(raw, country) {
   const now = new Date().toISOString();
 
   return {
@@ -19,13 +28,17 @@ function normalizeAdzunaJob(raw) {
     title: raw.title,
     company: raw.company?.display_name ?? null,
     location: raw.location?.display_name ?? null,
-    remote: null, // Adzuna doesn't expose this explicitly
+    workType: WORK_TYPE.UNKNOWN, // Adzuna exposes no structured signal for this
     description: raw.description ?? null, // excerpt, not full text
     employmentType: raw.contract_time ?? null, // e.g. "full_time", often missing
 
-    salaryMin: raw.salary_min ?? null,
-    salaryMax: raw.salary_max ?? null,
-    salaryCurrency: raw.salary_min != null ? 'USD' : null, // Adzuna doesn't return currency explicitly; adjust if you query non-US
+    minSalary: raw.salary_min ?? null, // Adzuna's salary_min/salary_max are annualized figures, not an hourly rate
+    maxSalary: raw.salary_max ?? null,
+    minHourly: null,
+    maxHourly: null,
+    currency: raw.salary_min != null || raw.salary_max != null
+      ? (CURRENCY_BY_COUNTRY[country] ?? 'USD')
+      : null,
 
     url: raw.redirect_url,
     postedAt: raw.created ?? null,
@@ -87,5 +100,5 @@ export async function fetchJobs({ country, keywords, location, desiredCount = 50
     if (allResults.length >= data.count) break;
   }
 
-  return allResults.slice(0, desiredCount).map(normalizeAdzunaJob);
+  return allResults.slice(0, desiredCount).map((raw) => normalizeAdzunaJob(raw, country));
 }

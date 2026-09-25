@@ -7,13 +7,15 @@ CREATE TABLE IF NOT EXISTS jobs (
   title            TEXT NOT NULL,
   company          TEXT,
   location         TEXT,
-  remote           INTEGER,        -- 0/1/NULL, SQLite has no native boolean  
+  workType         INTEGER,        -- 0=unknown 1=onsite 2=remote 3=hybrid
   description      TEXT,
   employmentType   TEXT,
 
-  salaryMin        REAL,
-  salaryMax        REAL,
-  salaryCurrency   TEXT,
+  minSalary        REAL,           -- annual, as given by the source
+  maxSalary        REAL,
+  minHourly        REAL,
+  maxHourly        REAL,
+  currency         TEXT,
 
   url              TEXT NOT NULL,
   postedAt         TEXT,

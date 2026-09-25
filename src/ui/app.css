@@ -22,7 +22,6 @@ html, body {
   background: #eef1f4;
   padding: 4px;
   box-sizing: border-box;
-  min-height: 520px;
   display: flex;
   flex-direction: column;
   font-family: var(--font-sans);
