@@ -109,13 +109,14 @@ body {
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   width: 460px;
+  height: 635px;
   max-width: calc(100vw - 40px);
   max-height: min(600px, calc(100vh - 80px));
   overflow-y: auto;
   overflow-x: auto;
   overscroll-behavior: contain;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  padding: 1.1rem 1.25rem;
+  padding: 1.1rem 1.25rem 1rem;
 }
 
 .filter-popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 15px; font-weight: 600; }
@@ -442,7 +443,7 @@ body {
 }
 .help-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--shortlist); display: inline-block; }
 
-.help-data-processing { margin-bottom: 16px; }
+.help-data-processing { margin-bottom: 16px; padding: 5px 5px; }
 .help-section-heading { font-size: 13px; font-weight: 600; margin: 0 0 6px; color: var(--ink); }
 .help-data-text { font-size: 12px; color: var(--ink); line-height: 1.6; margin: 0; }
 .help-inline-link {
