@@ -32,3 +32,4 @@ export const upsertJob = (job) => callDb('upsertJob', job);
 export const getJobsByStatus = (status) => callDb('getJobsByStatus', status);
 export const updateJobStatus = (id, newStatus) => callDb('updateJobStatus', { id, newStatus });
 export const getAllJobs = () => callDb('getAllJobs');
+export const resetDatabase = () => callDb('resetDatabase');

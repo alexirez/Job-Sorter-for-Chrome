@@ -308,6 +308,12 @@ body {
 }
 .add-resume-dropzone svg { width: 18px; height: 18px; color: var(--ink-muted); }
 
+.danger-zone { border-top: 1px solid var(--border-soft); margin-top: 12px; padding-top: 12px; }
+.wipe-btn { border-color: var(--rejected); color: var(--rejected); margin-top: 6px; }
+.wipe-btn:hover { background: #f6d9d9; }
+.wipe-btn.confirming { background: var(--rejected); color: #fff; font-weight: 600; }
+.wipe-error { color: var(--rejected); margin-top: 6px; }
+
 .begin-applying-btn {
   position: fixed;
   top: 14px;

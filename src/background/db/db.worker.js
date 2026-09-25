@@ -18,6 +18,14 @@ async function initDB() {
   return db;
 }
 
+// Wipes database if ever needed, via Help modal.
+async function resetDatabase() {
+  await initDB();
+  await sqlite3.exec(db, 'DROP TABLE IF EXISTS jobs;');
+  await sqlite3.exec(db, CREATE_JOBS_TABLE);
+  return { success: true };
+}
+
 async function upsertJob(job) {
   await initDB();
   const sql = `
@@ -75,7 +83,7 @@ async function updateJobStatus(id, newStatus) {
   return { success: true };
 }
 
-const handlers = { upsertJob, getJobsByStatus, updateJobStatus, getAllJobs };
+const handlers = { upsertJob, getJobsByStatus, updateJobStatus, getAllJobs, resetDatabase };
 
 self.onmessage = async (event) => {
   const { id, type, payload } = event.data;

@@ -316,12 +316,12 @@
   const SIDEBAR_WIDTH_EXPANDED = 240;
   const SIDEBAR_WIDTH_COLLAPSED = 56;
   let sidebarCollapsed = $state(false);
-  // Which details modal is open, if any — one flag instead of three
-  // booleans since only one can be open at a time and they share a shell.
   let activeDetailModal = $state(null); // 'personal' | 'preferences' | null
   let showResumesModal = $state(false);
-  // Resumes tagged with the titles they should be used for. UI-only for
-  // now — nothing is persisted or sent to the background script yet.
+  let wipeConfirming = $state(false);
+  let wiping = $state(false);
+  let wipeError = $state('');
+  let wipeConfirmTimeout;
   let resumes = $state([]);
 
   function statusCount(key) {
@@ -369,10 +369,7 @@
   }
 
   function toggleSelectAllVisible() {
-    // Anything selected at all → clear it. Nothing selected → select every
-    // visible job. This intentionally ignores "partial" selection as a
-    // distinct state for the click action itself (see indeterminate below
-    // for how partial selection is still *shown*).
+    // Anything selected at all → clear it. Nothing selected → select every visible job.
     selectedIds = selectedIds.size > 0 ? new Set() : new Set(filteredJobs.map((j) => j.id));
   }
 
@@ -415,6 +412,9 @@
 
   function closeDetailModal() {
     activeDetailModal = null;
+    wipeConfirming = false;
+    wipeError = '';
+    clearTimeout(wipeConfirmTimeout);
   }
 
   function addResume(e) {
@@ -436,6 +436,36 @@
 
   function removeResumeTag(id, index) {
     resumes = resumes.map((r) => (r.id === id ? { ...r, tags: r.tags.filter((_, i) => i !== index) } : r));
+  }
+
+  function requestWipe() {
+    if (!wipeConfirming) {
+      wipeConfirming = true;
+      clearTimeout(wipeConfirmTimeout);
+      wipeConfirmTimeout = setTimeout(() => (wipeConfirming = false), 4000);
+      return;
+    }
+    performWipe();
+  }
+
+  async function performWipe() {
+    clearTimeout(wipeConfirmTimeout);
+    wipeConfirming = false;
+    wiping = true;
+    wipeError = '';
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'postings:wipeJobs' });
+      if (!response.ok) throw new Error(response.error);
+      jobs = [];
+      selectedIds = new Set();
+      expandedIds = new Set();
+      rawOpenIds = new Set();
+      activeDetailModal = null;
+    } catch (err) {
+      wipeError = err.message;
+    } finally {
+      wiping = false;
+    }
   }
 </script>
 
@@ -789,7 +819,7 @@
           {@html settingsIcon}
           <span class="sidebar-label">Settings</span>
         </button>
-        <button class="sidebar-btn">
+        <button class="sidebar-btn" onclick={() => openDetailModal('help')}>
           {@html questionMarkIcon}
           <span class="sidebar-label">Help</span>
         </button>
@@ -814,25 +844,56 @@
         class="custom-filter-menu compact"
         role="dialog"
         aria-modal="true"
-        aria-label={activeDetailModal === 'personal' ? 'Edit personal info' : 'Edit preferences'}
+        aria-label={activeDetailModal === 'personal' ? 'Edit personal info'
+          : activeDetailModal === 'preferences' ? 'Edit preferences' : 'Help'}
         tabindex="-1"
         onclick={(e) => e.stopPropagation()}
         onkeydown={(e) => { if (e.key === 'Escape') closeDetailModal(); e.stopPropagation(); }}
       >
         <div class="filter-popup-header">
-          <span>{activeDetailModal === 'personal' ? 'Edit personal info' : 'Edit preferences'}</span>
+          <span>
+            {activeDetailModal === 'personal' ? 'Edit personal info'
+             : activeDetailModal === 'preferences' ? 'Edit preferences'
+             : 'Help'}
+          </span>
           <button class="icon-btn filter-popup-close" onclick={closeDetailModal} aria-label="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
           </button>
         </div>
         {#if activeDetailModal === 'personal'}
           <p class="filter-hint"><!-- TODO: real fields -->Name, email, phone, and links used to prefill applications.</p>
-        {:else}
+        {:else if activeDetailModal === 'preferences'}
           <p class="filter-hint"><!-- TODO: real fields -->Auto-fill screening questions, and which listings to skip.</p>
+        {:else}
+          <p class="filter-hint"><!-- TODO: real help content --></p>
+
+          <div class="danger-zone">
+            <p class="sidebar-heading" style="font-size:13px; margin:0 0 4px;">Start over</p>
+            <p class="filter-hint">Permanently deletes every stored posting and resets the database. This can't be undone.</p>
+            <button
+              class="chip wipe-btn"
+              class:confirming={wipeConfirming}
+              disabled={wiping}
+              onclick={requestWipe}
+            >
+              {#if wiping}
+                Wiping…
+              {:else if wipeConfirming}
+                Click again to confirm
+              {:else}
+                Wipe job postings
+              {/if}
+            </button>
+            {#if wipeError}
+              <p class="filter-hint wipe-error">Couldn't wipe: {wipeError}</p>
+            {/if}
+          </div>
         {/if}
         <div class="filter-popup-footer">
           <button class="chip" onclick={closeDetailModal}>Close</button>
-          <button class="chip apply-btn" onclick={closeDetailModal}>Save changes</button>
+          {#if activeDetailModal !== 'help'}
+            <button class="chip apply-btn" onclick={closeDetailModal}>Save changes</button>
+          {/if}
         </div>
       </div>
     </div>
