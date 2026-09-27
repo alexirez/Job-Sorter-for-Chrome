@@ -374,6 +374,16 @@
   let experienceDisplay = $derived(formatYearsFraction(experienceYears));
   let experienceOverride = $state('');
 
+  let workAuth = $state('');
+  let desiredSalary = $state('');
+  let startDate = $state('');
+  let relocation = $state('remote'); // 'remote' | 'hybrid' | 'relocate'
+  let eeocEnabled = $state(false);
+  let eeocGender = $state('');
+  let eeocRace = $state('');
+  let eeocVeteran = $state('');
+  let eeocDisability = $state('');
+
   let skills = $state([]);
   let skillInput = $state('');
   function addSkill() {
@@ -936,6 +946,11 @@ async function performWipe(target) {
           </button>
         </div>
         {#if activeDetailModal === 'personal'}
+          <div class="pi-tip">
+            <span class="help-qmark" aria-hidden="true">?</span>
+            <p>This data is used by the form autofiller. The more accurate and complete it is, the better your applications get filled out.</p>
+          </div>
+
           <div class="field-grid">
             <div class="field"><label for="pi-name">Full name</label><input id="pi-name" bind:value={personalName} /></div>
             <div class="field"><label for="pi-dob">Date of birth</label><input id="pi-dob" type="date" bind:value={personalDob} /></div>
@@ -1036,7 +1051,35 @@ async function performWipe(target) {
           </div>
 
           <div class="extras-divider"><span class="extras-label">Extras</span></div>
-          <p class="extras-note">All optional. Nothing here is required to use auto-fill. (Fields coming next pass.)</p>
+          <div class="field-grid">
+            <div class="field"><label for="pi-workauth">Work authorization</label><input id="pi-workauth" bind:value={workAuth} placeholder="e.g. Authorized, no sponsorship needed" /></div>
+            <div class="field"><label for="pi-salary">Desired salary</label><input id="pi-salary" bind:value={desiredSalary} placeholder="e.g. $150,000+" /></div>
+            <div class="field"><label for="pi-startdate">Earliest start date</label><input id="pi-startdate" bind:value={startDate} placeholder="e.g. 2 weeks notice" /></div>
+            <div class="field">
+              <span id="pi-relocation-label" class="field-label">Relocation</span>
+              <div class="pill-row" role="group" aria-labelledby="pi-relocation-label">
+                <button type="button" class="pill-toggle" class:active={relocation === 'remote'} onclick={() => (relocation = 'remote')}>Remote only</button>
+                <button type="button" class="pill-toggle" class:active={relocation === 'hybrid'} onclick={() => (relocation = 'hybrid')}>Hybrid</button>
+                <button type="button" class="pill-toggle" class:active={relocation === 'relocate'} onclick={() => (relocation = 'relocate')}>Relocate</button>
+              </div>
+            </div>
+          </div>
+
+          <label class="eeoc-toggle">
+            <span>Voluntary demographic info (EEOC)</span>
+            <span class="toggle-switch" class:on={eeocEnabled}>
+              <input type="checkbox" class="sr-only-checkbox" checked={eeocEnabled} onchange={() => (eeocEnabled = !eeocEnabled)} />
+            </span>
+          </label>
+          {#if eeocEnabled}
+            <p class="extras-note">Optional and legally protected — used only to pre-fill the same voluntary section many applications include.</p>
+            <div class="field-grid">
+              <div class="field"><label for="pi-gender">Gender</label><input id="pi-gender" bind:value={eeocGender} /></div>
+              <div class="field"><label for="pi-race">Race / ethnicity</label><input id="pi-race" bind:value={eeocRace} /></div>
+              <div class="field"><label for="pi-veteran">Veteran status</label><input id="pi-veteran" bind:value={eeocVeteran} /></div>
+              <div class="field"><label for="pi-disability">Disability status</label><input id="pi-disability" bind:value={eeocDisability} /></div>
+            </div>
+          {/if}
         {:else if activeDetailModal === 'preferences'}
           <p class="filter-hint"><!-- TODO: real fields -->Auto-fill screening questions, and which listings to skip.</p>
         {:else}
