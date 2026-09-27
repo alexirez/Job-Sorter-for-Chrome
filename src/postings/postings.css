@@ -104,7 +104,7 @@ body {
   justify-content: center;
 }
 
-.custom-filter-menu {
+.detail-modals {
   background: var(--paper);
   border: 1px solid var(--border-strong);
   border-radius: 10px;
@@ -301,7 +301,6 @@ body {
 .sidebar-stat { font-size: 11px; color: var(--ink-muted); padding: 0 12px 8px; margin: 0; }
 .sidebar-version { font-size: 10px; color: var(--ink-muted); text-align: center; padding: 10px 0; margin: 0; }
 
-.custom-filter-menu.compact { width: 320px; }
 .resumes-list { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
 .resume-row { border: 1px solid var(--border-soft); border-radius: 8px; padding: 10px; }
 .resume-row-top { display: flex; align-items: center; gap: 8px; }
@@ -417,7 +416,6 @@ body {
   animation: applying-filters-spin 0.8s linear infinite;
 }
 
-.custom-filter-menu.help-wide { width: 460px; }
 .filter-popup-header.help-header { justify-content: flex-end; gap: 8px; margin-bottom: 0; }
 .help-qmark {
   width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--border-strong);

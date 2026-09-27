@@ -543,7 +543,7 @@ async function performWipe(target) {
         onkeydown={(e) => { if (e.key === 'Escape') closeFilterMenu(); }}
       >
         <div
-          class="custom-filter-menu"
+          class="detail-modals"
           role="dialog"
           aria-label="Custom filter"
           aria-modal="true"
@@ -855,9 +855,7 @@ async function performWipe(target) {
       onkeydown={(e) => { if (e.key === 'Escape') closeDetailModal(); }}
     >
       <div
-        class="custom-filter-menu"
-        class:compact={activeDetailModal !== 'help'}
-        class:help-wide={activeDetailModal === 'help'}
+        class="detail-modals"
         role="dialog"
         aria-modal="true"
         aria-label={activeDetailModal === 'personal' ? 'Edit personal info'
@@ -969,7 +967,7 @@ async function performWipe(target) {
       onkeydown={(e) => { if (e.key === 'Escape') showResumesModal = false; }}
     >
       <div
-        class="custom-filter-menu compact"
+        class="detail-modals"
         role="dialog"
         aria-modal="true"
         aria-label="Resumes"
