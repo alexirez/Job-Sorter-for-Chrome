@@ -39,10 +39,10 @@
   function stampFor(job) {
     if (job.status === 'new') {
       const isRecent = job.postedAt && Date.now() - new Date(job.postedAt).getTime() < THREE_DAYS_MS;
-      return isRecent ? { label: 'New', rotate: -4 } : null;
+      return isRecent ? { label: 'New' } : null;
     }
-    if (job.status === 'rejected') return { label: 'Rejected', rotate: 4 };
-    if (job.status === 'applied') return { label: 'Applied', rotate: 0 };
+    if (job.status === 'rejected') return { label: 'Rejected' };
+    if (job.status === 'applied') return { label: 'Applied' };
     return null;
   }
 
@@ -1044,11 +1044,13 @@ async function performWipe(target) {
             onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(job.id); } }}
           >
             <input class="job-checkbox" type="checkbox" checked={selectedIds.has(job.id)} onclick={(e) => toggleSelect(job.id, e)} aria-label="Select posting" />
-            {#if stamp}
-              <div class="stamp stamp-{job.status}" style={stamp.rotate ? `transform: rotate(${stamp.rotate}deg);` : ''}>{stamp.label}</div>
-            {/if}
             <div class="job-main">
-              <p class="job-title">{job.title}</p>
+              <div class="job-title-row">
+                <p class="job-title">{job.title}</p>
+                {#if stamp}
+                  <span class="job-label job-label-{job.status}">{stamp.label}</span>
+                {/if}
+              </div>
               <p class="job-meta">{job.company} · {job.location} · posted {job.postedAt}</p>
             </div>
             <div class="job-salary">
