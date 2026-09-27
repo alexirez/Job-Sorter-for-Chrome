@@ -1037,7 +1037,7 @@ async function performWipe(target) {
           <p class="section-hint">Same repeatable pattern as above — add as many as apply.</p>
           <div class="keyword-input-box">
             {#each skills as skill, i}
-              <span class="keyword-pill">
+              <span class="keyword-pill include">
                 {skill}
                 <button class="keyword-pill-remove" onclick={() => removeSkill(i)} aria-label="Remove {skill}">×</button>
               </span>
