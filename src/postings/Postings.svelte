@@ -324,6 +324,66 @@
   let wipeConfirmTimeout;
   let resumes = $state([]);
 
+  // ---- Edit personal info: state ----
+  let personalName = $state('');
+  let personalDob = $state('');
+
+  let contacts = $state({ email: '', phone: '', linkedin: '', github: '' });
+  let customContacts = $state([]); // { id, label, value }
+  let newContactLabel = $state('');
+  let newContactValue = $state('');
+
+  function addCustomContact() {
+    const value = newContactValue.trim();
+    if (!value) return;
+    customContacts = [...customContacts, { id: crypto.randomUUID(), label: newContactLabel.trim() || 'Custom', value }];
+    newContactLabel = '';
+    newContactValue = '';
+  }
+
+  function removeCustomContact(id) {
+    customContacts = customContacts.filter((c) => c.id !== id);
+  }
+
+  let schools = $state([{ id: crypto.randomUUID(), name: '', start: '', end: '' }]);
+  let workHistory = $state([{ id: crypto.randomUUID(), company: '', start: '', end: '' }]);
+
+  function addSchool() { schools = [...schools, { id: crypto.randomUUID(), name: '', start: '', end: '' }]; }
+  function removeSchool(id) { schools = schools.filter((s) => s.id !== id); }
+  function addJob() { workHistory = [...workHistory, { id: crypto.randomUUID(), company: '', start: '', end: '' }]; }
+  function removeJob(id) { workHistory = workHistory.filter((j) => j.id !== id); }
+
+  // start/end are native <input type="month"> values ("YYYY-MM"), so no date parsing needed.
+  function monthsBetween(start, end) {
+    if (!start) return 0;
+    const [sy, sm] = start.split('-').map(Number);
+    const now = new Date();
+    const [ey, em] = end ? end.split('-').map(Number) : [now.getFullYear(), now.getMonth() + 1];
+    return Math.max(0, (ey - sy) * 12 + (em - sm));
+  }
+
+  const QUARTER_FRACTIONS = { 0: '', 0.25: '¼', 0.5: '½', 0.75: '¾' };
+  function formatYearsFraction(years) {
+    const rounded = Math.round(years * 4) / 4;
+    const whole = Math.floor(rounded);
+    const frac = QUARTER_FRACTIONS[+(rounded - whole).toFixed(2)] ?? '';
+    return whole === 0 && frac ? frac : `${whole}${frac ? ' ' + frac : ''}`;
+  }
+
+  let experienceYears = $derived(workHistory.reduce((sum, j) => sum + monthsBetween(j.start, j.end), 0) / 12);
+  let experienceDisplay = $derived(formatYearsFraction(experienceYears));
+  let experienceOverride = $state('');
+
+  let skills = $state([]);
+  let skillInput = $state('');
+  function addSkill() {
+    const value = skillInput.trim();
+    if (!value) return;
+    skills = [...skills, value];
+    skillInput = '';
+  }
+  function removeSkill(index) { skills = skills.filter((_, i) => i !== index); }
+
   function statusCount(key) {
     if (key === 'all') return jobs.length;
     return jobs.filter((j) => j.status === key).length;
@@ -362,12 +422,13 @@
     const trimmed = Number.isInteger(thousands) ? thousands : Math.round(thousands * 10) / 10;
     return `${trimmed}k`;
   }
-  
+
   function formatSalary(job) {
     const min = job.salaryMin ?? job.salaryMax;
     const max = job.salaryMax ?? job.salaryMin;
     if (min == null) return null;
-    return min === max ? Math.round(min).toLocaleString() : `${formatCompact(min)}–${formatCompact(max)}`;  }
+    return min === max ? Math.round(min).toLocaleString() : `${formatCompact(min)}–${formatCompact(max)}`;
+  }
 
   function toggleSelect(id, event) {
     event.stopPropagation();
@@ -875,7 +936,107 @@ async function performWipe(target) {
           </button>
         </div>
         {#if activeDetailModal === 'personal'}
-          <p class="filter-hint"><!-- TODO: real fields -->Name, email, phone, and links used to prefill applications.</p>
+          <div class="field-grid">
+            <div class="field"><label for="pi-name">Full name</label><input id="pi-name" bind:value={personalName} /></div>
+            <div class="field"><label for="pi-dob">Date of birth</label><input id="pi-dob" type="date" bind:value={personalDob} /></div>
+          </div>
+
+          <p class="section-title">Contacts</p>
+          <div class="contact-row">
+            <label class="contact-label" for="pi-contact-email">Email</label>
+            <input id="pi-contact-email" class="contact-input" bind:value={contacts.email} placeholder="you@example.com" />
+            <span class="contact-spacer"></span>
+          </div>
+          <div class="contact-row">
+            <label class="contact-label" for="pi-contact-phone">Phone</label>
+            <input id="pi-contact-phone" class="contact-input" bind:value={contacts.phone} placeholder="(555) 010-2938" />
+            <span class="contact-spacer"></span>
+          </div>
+          <div class="contact-row">
+            <label class="contact-label" for="pi-contact-linkedin">LinkedIn</label>
+            <input id="pi-contact-linkedin" class="contact-input" bind:value={contacts.linkedin} placeholder="linkedin.com/in/you" />
+            <span class="contact-spacer"></span>
+          </div>
+          <div class="contact-row">
+            <label class="contact-label" for="pi-contact-github">GitHub</label>
+            <input id="pi-contact-github" class="contact-input" bind:value={contacts.github} placeholder="github.com/you" />
+            <span class="contact-spacer"></span>
+          </div>
+          {#each customContacts as c (c.id)}
+            <div class="contact-row">
+              <input class="contact-input contact-label-input" bind:value={c.label} />
+              <input class="contact-input" bind:value={c.value} />
+              <button class="contact-remove" onclick={() => removeCustomContact(c.id)} aria-label="Remove {c.label}">×</button>
+            </div>
+          {/each}
+          <div class="contact-row">
+            <input class="contact-input contact-label-input" bind:value={newContactLabel} placeholder="Custom" />
+            <input
+              class="contact-input"
+              bind:value={newContactValue}
+              placeholder="value"
+              onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomContact(); } }}
+            />
+            <button class="contact-add" onclick={addCustomContact} aria-label="Add contact">+</button>
+          </div>
+
+          <p class="section-title">Education</p>
+          <p class="section-hint">Add one entry per school — a fresh template appears after each.</p>
+          {#each schools as school (school.id)}
+            <div class="entry-card">
+              {#if schools.length > 1}
+                <button class="entry-remove" onclick={() => removeSchool(school.id)}>Remove</button>
+              {/if}
+              <div class="entry-row"><div class="field"><label for="school-name-{school.id}">School</label><input id="school-name-{school.id}" bind:value={school.name} /></div></div>
+              <div class="entry-row">
+                <div class="field"><label for="school-start-{school.id}">Started</label><input id="school-start-{school.id}" type="month" bind:value={school.start} /></div>
+                <div class="field"><label for="school-end-{school.id}">Graduated <span class="field-optional">— leave blank if ongoing</span></label><input id="school-end-{school.id}" type="month" bind:value={school.end} /></div>
+              </div>
+            </div>
+          {/each}
+          <button class="add-entry-btn" onclick={addSchool}>+ Add another school</button>
+
+          <p class="section-title">Work experience</p>
+          <p class="section-hint">Same idea as education — one card per job.</p>
+          {#each workHistory as job (job.id)}
+            <div class="entry-card">
+              {#if workHistory.length > 1}
+                <button class="entry-remove" onclick={() => removeJob(job.id)}>Remove</button>
+              {/if}
+              <div class="entry-row full"><div class="field"><label for="job-company-{job.id}">Company & title</label><input id="job-company-{job.id}" bind:value={job.company} /></div></div>
+              <div class="entry-row">
+                <div class="field"><label for="job-start-{job.id}">Started</label><input id="job-start-{job.id}" type="month" bind:value={job.start} /></div>
+                <div class="field"><label for="job-end-{job.id}">Ended <span class="field-optional">— leave blank if ongoing</span></label><input id="job-end-{job.id}" type="month" bind:value={job.end} /></div>
+              </div>
+            </div>
+          {/each}
+          <button class="add-entry-btn" onclick={addJob}>+ Add another job</button>
+
+          <p class="section-title">Years of experience</p>
+          <div class="exp-row">
+            <span class="exp-auto">{experienceDisplay} years — calculated from work history</span>
+            <span class="exp-override">Override <input bind:value={experienceOverride} placeholder={experienceDisplay} /></span>
+          </div>
+
+          <p class="section-title">Skills & certifications</p>
+          <p class="section-hint">Same repeatable pattern as above — add as many as apply.</p>
+          <div class="keyword-input-box">
+            {#each skills as skill, i}
+              <span class="keyword-pill">
+                {skill}
+                <button class="keyword-pill-remove" onclick={() => removeSkill(i)} aria-label="Remove {skill}">×</button>
+              </span>
+            {/each}
+            <input
+              class="keyword-input"
+              bind:value={skillInput}
+              placeholder="add a skill or certification..."
+              onkeydown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSkill(); } }}
+            />
+          </div>
+
+          <div class="extras-divider"><span class="extras-label">Extras</span></div>
+          <p class="extras-note">All optional. Nothing here is required to use auto-fill. (Fields coming next pass.)</p>
         {:else if activeDetailModal === 'preferences'}
           <p class="filter-hint"><!-- TODO: real fields -->Auto-fill screening questions, and which listings to skip.</p>
         {:else}

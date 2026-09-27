@@ -483,3 +483,45 @@ body {
 @media (max-width: 700px) {
   .postings-page { --sidebar-w: 52px !important; }
 }
+
+/* Edit personal info modal */
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 11px; color: var(--ink-muted); }
+.field input { font-size: 13px; padding: 7px 9px; border: 1px solid var(--border-soft); border-radius: 6px; background: #fff; color: var(--ink); }
+.field-optional { font-weight: 400; font-style: italic; color: var(--ink-muted); }
+
+.section-title { font-size: 13px; font-weight: 700; margin: 18px 0 2px; color: var(--ink); }
+.section-hint { font-size: 11px; color: var(--ink-muted); margin: 0 0 10px; }
+
+.contact-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.contact-label { flex: 0 0 72px; font-size: 12px; color: var(--ink-muted); cursor: pointer; }
+.contact-input { flex: 1; font-size: 13px; padding: 6px 9px; border: 1px solid var(--border-soft); border-radius: 6px; background: #fff; color: var(--ink); }
+.contact-label-input { flex: 0 0 100px; }
+.contact-spacer { width: 22px; flex-shrink: 0; }
+.contact-add, .contact-remove {
+  width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; border: none;
+  display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer;
+}
+.contact-add { background: var(--seg-bg); color: var(--new); }
+.contact-remove { background: #f6d9d9; color: var(--rejected); }
+
+.entry-card { border: 1px solid var(--border-soft); border-radius: 8px; padding: 12px; margin-bottom: 8px; background: #fff; }
+.entry-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.entry-row:last-child { margin-bottom: 0; }
+.entry-row.full { grid-template-columns: 1fr; }
+.entry-remove { float: right; background: none; border: none; color: var(--rejected); font-size: 11px; cursor: pointer; padding: 0; }
+.add-entry-btn {
+  width: 100%; padding: 9px; border: 1.5px dashed var(--border-strong); border-radius: 8px;
+  background: transparent; color: var(--new); font-size: 12.5px; font-weight: 600; cursor: pointer; margin-bottom: 4px;
+}
+
+.exp-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
+.exp-auto { font-size: 13px; font-weight: 600; background: var(--seg-bg); color: var(--new); padding: 5px 10px; border-radius: 6px; }
+.exp-override { font-size: 11px; color: var(--ink-muted); display: flex; align-items: center; gap: 6px; }
+.exp-override input { width: 54px; font-size: 12px; padding: 4px 6px; border: 1px solid var(--border-soft); border-radius: 5px; }
+
+.extras-divider { display: flex; align-items: center; gap: 10px; margin: 20px 0 4px; }
+.extras-divider::before, .extras-divider::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); }
+.extras-label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-muted); }
+.extras-note { font-size: 11px; color: var(--ink-muted); margin: 2px 0 12px; }
