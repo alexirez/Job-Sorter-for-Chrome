@@ -354,12 +354,20 @@
     filters = { ...filters, [key]: !filters[key] };
   }
 
-  function formatSalary(job) {
-    if (job.salaryMin == null && job.salaryMax == null) return null;
-    if (job.salaryMin != null && job.salaryMax != null)
-      return `${job.salaryMin.toLocaleString()}–${job.salaryMax.toLocaleString()}`;
-    return (job.salaryMin ?? job.salaryMax).toLocaleString();
+  function formatCompact(value) {
+    const rounded = Math.round(value);
+    if (Math.abs(rounded) < 1000) return String(rounded);
+    const thousands = rounded / 1000;
+    // Whole thousands stay as "60k"; anything in between gets one decimal, e.g. "62.5k".
+    const trimmed = Number.isInteger(thousands) ? thousands : Math.round(thousands * 10) / 10;
+    return `${trimmed}k`;
   }
+  
+  function formatSalary(job) {
+    const min = job.salaryMin ?? job.salaryMax;
+    const max = job.salaryMax ?? job.salaryMin;
+    if (min == null) return null;
+    return min === max ? Math.round(min).toLocaleString() : `${formatCompact(min)}–${formatCompact(max)}`;  }
 
   function toggleSelect(id, event) {
     event.stopPropagation();
@@ -1034,6 +1042,10 @@ async function performWipe(target) {
     {:else}
       {#each filteredJobs as job (job.id)}
         {@const stamp = stampFor(job)}
+        {@const salary = formatSalary(job)}
+        {@const salaryFull = job.salaryMax == null || job.salaryMin === job.salaryMax
+          ? Math.round(job.salaryMin ?? job.salaryMax).toLocaleString()
+          : `${Math.round(job.salaryMin).toLocaleString()}–${Math.round(job.salaryMax).toLocaleString()}`}
         <div class="job-card" class:closed={job.status === 'rejected' || job.status === 'filtered_out'} class:selected={selectedIds.has(job.id)}>
           <div
             class="job-row"
@@ -1054,10 +1066,10 @@ async function performWipe(target) {
               <p class="job-meta">{job.company} · {job.location} · posted {job.postedAt}</p>
             </div>
             <div class="job-salary">
-              {#if formatSalary(job)}
+              {#if salary}
                 <span class="salary-flag" title={job.salaryIsPredicted ? 'Approximated' : 'Explicit'}>{job.salaryIsPredicted ? '~' : '✓'}</span>
                 <span class="salary-dollar">$</span>
-                <span class="salary-amount">{formatSalary(job)}</span>
+                <span class="salary-amount" title={salaryFull}>{salary}</span>
               {:else}
                 <span class="salary-flag" title="Approximated">~</span>
                 <span class="salary-amount muted">not listed</span>
