@@ -1043,9 +1043,6 @@ async function performWipe(target) {
       {#each filteredJobs as job (job.id)}
         {@const stamp = stampFor(job)}
         {@const salary = formatSalary(job)}
-        {@const salaryFull = job.salaryMax == null || job.salaryMin === job.salaryMax
-          ? Math.round(job.salaryMin ?? job.salaryMax).toLocaleString()
-          : `${Math.round(job.salaryMin).toLocaleString()}–${Math.round(job.salaryMax).toLocaleString()}`}
         <div class="job-card" class:closed={job.status === 'rejected' || job.status === 'filtered_out'} class:selected={selectedIds.has(job.id)}>
           <div
             class="job-row"
@@ -1069,7 +1066,7 @@ async function performWipe(target) {
               {#if salary}
                 <span class="salary-flag" title={job.salaryIsPredicted ? 'Approximated' : 'Explicit'}>{job.salaryIsPredicted ? '~' : '✓'}</span>
                 <span class="salary-dollar">$</span>
-                <span class="salary-amount" title={salaryFull}>{salary}</span>
+                <span class="salary-amount">{salary}</span>
               {:else}
                 <span class="salary-flag" title="Approximated">~</span>
                 <span class="salary-amount muted">not listed</span>

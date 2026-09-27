@@ -271,13 +271,13 @@ body {
 
 .fill-details-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .completeness-ring {
-  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  width: 41px; height: 41px; border-radius: 50%; flex-shrink: 0;
   background: conic-gradient(var(--shortlist) 0deg 240deg, var(--border-soft) 240deg 360deg);
   display: flex; align-items: center; justify-content: center;
 }
 .completeness-ring span {
-  width: 26px; height: 26px; border-radius: 50%; background: var(--paper);
-  display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600;
+  width: 31px; height: 31px; border-radius: 50%; background: var(--paper);
+  display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600;
 }
 .sidebar-heading { margin: 0; font-size: 13px; font-weight: 600; }
 .sidebar-subtext { margin: 0; font-size: 11px; color: var(--ink-muted); }
@@ -296,6 +296,7 @@ body {
 .details-sidebar.collapsed .sidebar-label { display: none; }
 .details-sidebar.collapsed .sidebar-btn { justify-content: center; }
 .details-sidebar.collapsed .fill-details-row { justify-content: center; }
+.details-sidebar.collapsed .fill-details-row > div:not(.completeness-ring) { display: none; }
 
 .sidebar-stat { font-size: 11px; color: var(--ink-muted); padding: 0 12px 8px; margin: 0; }
 .sidebar-version { font-size: 10px; color: var(--ink-muted); text-align: center; padding: 10px 0; margin: 0; }
