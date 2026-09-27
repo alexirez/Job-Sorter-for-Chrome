@@ -996,7 +996,6 @@ async function performWipe(target) {
           </div>
 
           <p class="section-title">Education</p>
-          <p class="section-hint">Add one entry per school — a fresh template appears after each.</p>
           {#each schools as school (school.id)}
             <div class="entry-card">
               {#if schools.length > 1}
@@ -1012,7 +1011,6 @@ async function performWipe(target) {
           <button class="add-entry-btn" onclick={addSchool}>+ Add another school</button>
 
           <p class="section-title">Work experience</p>
-          <p class="section-hint">Same idea as education — one card per job.</p>
           {#each workHistory as job (job.id)}
             <div class="entry-card">
               {#if workHistory.length > 1}
@@ -1034,7 +1032,6 @@ async function performWipe(target) {
           </div>
 
           <p class="section-title">Skills & certifications</p>
-          <p class="section-hint">Same repeatable pattern as above — add as many as apply.</p>
           <div class="keyword-input-box">
             {#each skills as skill, i}
               <span class="keyword-pill include">
@@ -1072,7 +1069,6 @@ async function performWipe(target) {
             </span>
           </label>
           {#if eeocEnabled}
-            <p class="extras-note">Optional and legally protected — used only to pre-fill the same voluntary section many applications include.</p>
             <div class="field-grid">
               <div class="field"><label for="pi-gender">Gender</label><input id="pi-gender" bind:value={eeocGender} /></div>
               <div class="field"><label for="pi-race">Race / ethnicity</label><input id="pi-race" bind:value={eeocRace} /></div>
