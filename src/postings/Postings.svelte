@@ -46,12 +46,51 @@
     return null;
   }
 
+  // ---- Modals: only one is ever open, so a single value tracks which ----
+  const MODAL_TITLES = {
+    filters: 'Filters',
+    personal: 'Edit personal info',
+    preferences: 'Edit preferences',
+    resumes: 'Resumes',
+    fetch: 'Fetch jobs',
+    apply: 'Begin applying',
+    help: 'Help'
+  };
+  const SAVEABLE_MODALS = ['personal', 'preferences', 'resumes'];
+
+  let activeModal = $state(null); // a key of MODAL_TITLES, or null when nothing is open
+  let modalNode = $state(null);
+  let wipeTarget = $state(null);  // 'personal' | 'postings' | null — which button is armed
+  let wiping = $state(null);      // 'personal' | 'postings' | null — which is in flight
+  let wipeError = $state('');
+  let wipeConfirmTimeout;
+
+  function openModal(name) {
+    activeModal = name;
+  }
+
+  function closeModal() {
+    activeModal = null;
+    wipeTarget = null;
+    wipeError = '';
+    clearTimeout(wipeConfirmTimeout);
+  }
+
+  $effect(() => {
+    if (!activeModal) return;
+    function onKey(e) { if (e.key === 'Escape') closeModal(); }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  $effect(() => {
+    if (activeModal && modalNode) modalNode.focus();
+  });
+
   let activeStatus = $state('all');
   let expandedIds = $state(new Set());
   let rawOpenIds = $state(new Set());
   let filters = $state({ remoteOnly: false, salaryListed: false, postedThisWeek: false });
-  let showFilterMenu = $state(false);
-  let filterMenuNode = $state(null);
 
   const COMP_TYPES = {
     salary: { min: 0, max: 500000, step: 1000, prefix: '$' },
@@ -101,11 +140,7 @@
 
   function openFilterMenu() {
     draftFilterState = $state.snapshot(appliedFilterState);
-    showFilterMenu = true;
-  }
-
-  function closeFilterMenu() {
-    showFilterMenu = false;
+    openModal('filters');
   }
 
   function toggleWorkType(key) {
@@ -276,7 +311,7 @@
 
   function applyFilters() {
     appliedFilterState = $state.snapshot(draftFilterState);
-    showFilterMenu = false;
+    closeModal();
     loadingState = 'filtering';
     // TODO: recompute filteredJobs / message background using appliedFilterState
     // (postedWithin, salary/hourly range, workType, include/exclude keywords, AI filter)
@@ -288,44 +323,12 @@
     draftFilterState = defaultFilterState();
   }
 
-  $effect(() => {
-    if (showFilterMenu && filterMenuNode) filterMenuNode.focus();
-  });
-
-  $effect(() => {
-    if (!showFilterMenu) return;
-    function onKey(e) { if (e.key === 'Escape') showFilterMenu = false; }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-
-  $effect(() => {
-    if (!activeDetailModal && !showResumesModal && !showFetchModal && !showApplyModal) return;
-    function onKey(e) {
-      if (e.key !== 'Escape') return;
-      closeDetailModal();
-      showResumesModal = false;
-      showFetchModal = false;
-      showApplyModal = false;
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-
   // Multi-select
   let selectedIds = $state(new Set());
 
   const SIDEBAR_WIDTH_EXPANDED = 240;
   const SIDEBAR_WIDTH_COLLAPSED = 56;
   let sidebarCollapsed = $state(false);
-  let activeDetailModal = $state(null); // 'personal' | 'preferences' | null
-  let showResumesModal = $state(false);
-  let showFetchModal = $state(false);
-  let showApplyModal = $state(false);
-  let wipeTarget = $state(null);  // 'personal' | 'postings' | null — which button is armed
-  let wiping = $state(null);      // 'personal' | 'postings' | null — which is in flight
-  let wipeError = $state('');
-  let wipeConfirmTimeout;
   let resumes = $state([]);
 
   // ---- Edit personal info: state ----
@@ -482,22 +485,11 @@
     selectedIds = new Set();
   }
 
-  // TODO: kick off the automation pipeline
+  // TODO: kick off the automation pipeline (call this from the apply modal's start button)
   function beginApplying() {}
 
   function toggleSidebar() {
     sidebarCollapsed = !sidebarCollapsed;
-  }
-
-  function openDetailModal(which) {
-    activeDetailModal = which;
-  }
-
-  function closeDetailModal() {
-    activeDetailModal = null;
-    wipeTarget = null;
-    wipeError = '';
-    clearTimeout(wipeConfirmTimeout);
   }
 
   function addResume(e) {
@@ -544,7 +536,7 @@ async function performWipe(target) {
       selectedIds = new Set();
       expandedIds = new Set();
       rawOpenIds = new Set();
-      activeDetailModal = null;
+      activeModal = null;
     } else if (target === 'personal') {
       // TODO: no personal-info storage exists yet — wire this up once
       // Edit personal info actually persists something to wipe.
@@ -595,7 +587,7 @@ async function performWipe(target) {
       {:else}
         <button
           class="icon-btn filter-btn"
-          class:active={showFilterMenu}
+          class:active={activeModal === 'filters'}
           onclick={openFilterMenu}
           aria-label="Custom filter"
           title="Custom filter"
@@ -607,33 +599,129 @@ async function performWipe(target) {
         <button class="chip" class:active={filters.postedThisWeek} onclick={() => toggleFilter('postedThisWeek')}>Posted this week</button>
       {/if}
     </div>
+  </div>
 
-    {#if showFilterMenu}
-      <div
-        class="filter-menu-backdrop"
-        role="button"
-        tabindex="0"
-        aria-label="Close filter menu"
-        onclick={closeFilterMenu}
-        onkeydown={(e) => { if (e.key === 'Escape') closeFilterMenu(); }}
+  <div class="top-actions">
+    <button
+      class="fetch-jobs-btn"
+      onclick={() => openModal('fetch')}
+      aria-label="Fetch Jobs"
+      title="Fetch Jobs"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0113.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 01-13.7 5.6L4 15M4 20v-5h5" /></svg>
+      Fetch Jobs
+    </button>
+    <button
+      class="begin-applying-btn"
+      onclick={() => openModal('apply')}
+      aria-label="Begin Applying"
+      title="Begin Applying"
+    >
+      {@html applyIcon}
+      Begin Applying
+    </button>
+  </div>
+  {#if loadingState === 'filtering'}
+    <div class="applying-filters-wrap">
+      <div class="applying-filters-pill">
+        <span class="applying-filters-spinner"></span>
+        Applying filters…
+      </div>
+    </div>
+  {/if}
+
+    <aside class="details-sidebar" class:collapsed={sidebarCollapsed}>
+    <div class="sidebar-header">
+      <button
+        class="sidebar-collapse-btn"
+        onclick={toggleSidebar}
+        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={sidebarCollapsed ? 'Expand' : 'Collapse'}
       >
-        <div
-          class="detail-modals"
-          role="dialog"
-          aria-label="Custom filter"
-          aria-modal="true"
-          tabindex="-1"
-          bind:this={filterMenuNode}
-          onclick={(e) => e.stopPropagation()}
-          onkeydown={(e) => { if (e.key === 'Escape') closeFilterMenu(); e.stopPropagation(); }}
-        >
-          <div class="filter-popup-header">
-            <span>Filters</span>
-            <button class="icon-btn filter-popup-close" onclick={closeFilterMenu} aria-label="Close">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
-            </button>
-          </div>
+        <span class="sidebar-collapse-icon" class:flipped={sidebarCollapsed}>{@html chevronsIcon}</span>
+      </button>
+    </div>
 
+    <div class="sidebar-scroll">
+      <div class="sidebar-section">
+        <div class="fill-details-row">
+          <!-- TODO: compute this from real section-completion state -->
+          <div class="completeness-ring"><span>2/3</span></div>
+          <div>
+            <p class="sidebar-heading sidebar-label">Fill details</p>
+            <p class="sidebar-subtext sidebar-label">2 of 3 sections done</p>
+          </div>
+        </div>
+        <button class="sidebar-btn" onclick={() => openModal('personal')}>
+          {@html userIcon}
+          <span class="sidebar-label">Edit personal info</span>
+        </button>
+        <button class="sidebar-btn" onclick={() => openModal('preferences')}>
+          {@html preferencesIcon}
+          <span class="sidebar-label">Edit preferences</span>
+        </button>
+      </div>
+
+      <div class="sidebar-section">
+        <button class="sidebar-btn sidebar-btn-outline" onclick={() => openModal('resumes')}>
+          {@html uploadIcon}
+          <span class="sidebar-label" style="flex:1;">Upload resume</span>
+          {#if resumes.length > 0}
+            <span class="sidebar-count sidebar-label">{resumes.length}</span>
+          {/if}
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section sidebar-section-plain">
+        <button class="sidebar-btn" title="View archived">
+          {@html archiveIcon}
+          <span class="sidebar-label">View archived</span>
+        </button>
+        <button class="sidebar-btn">
+          {@html settingsIcon}
+          <span class="sidebar-label">Settings</span>
+        </button>
+        <button class="sidebar-btn" onclick={() => openModal('help')}>
+          {@html questionMarkIcon}
+          <span class="sidebar-label">Help</span>
+        </button>
+      </div>
+
+      <p class="sidebar-stat sidebar-label">{jobs.length} postings tracked this week</p>
+    </div>
+
+    <p class="sidebar-version sidebar-label">v0.4.2</p>
+  </aside>
+
+  {#if activeModal}
+    <!-- Escape is handled globally by the $effect above, so the backdrop only needs a click handler. -->
+    <div
+      class="filter-menu-backdrop"
+      role="presentation"
+      onclick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
+    >
+      <div
+        class="detail-modals"
+        role="dialog"
+        aria-modal="true"
+        aria-label={MODAL_TITLES[activeModal]}
+        tabindex="-1"
+        bind:this={modalNode}
+      >
+        <div class="filter-popup-header" class:help-header={activeModal === 'help'}>
+          {#if activeModal === 'help'}
+            <span class="help-qmark" aria-hidden="true">?</span>
+          {:else}
+            <span>{MODAL_TITLES[activeModal]}</span>
+          {/if}
+          <button class="icon-btn filter-popup-close" onclick={closeModal} aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
+          </button>
+        </div>
+
+        {#if activeModal === 'filters'}
           <div class="filter-sections">
             <div class="filter-section">
               <div class="filter-section-header">                
@@ -832,135 +920,8 @@ async function performWipe(target) {
             <button class="chip" onclick={clearDraftFilters}>Clear all</button>
             <button class="chip apply-btn" onclick={applyFilters}>Apply</button>
           </div>
-        </div>
-      </div>
-    {/if}
-  </div>
 
-  <div class="top-actions">
-    <button
-      class="fetch-jobs-btn"
-      onclick={() => (showFetchModal = true)}
-      aria-label="Fetch Jobs"
-      title="Fetch Jobs"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0113.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 01-13.7 5.6L4 15M4 20v-5h5" /></svg>
-      Fetch Jobs
-    </button>
-    <button
-      class="begin-applying-btn"
-      onclick={() => (showApplyModal = true)}
-      aria-label="Begin Applying"
-      title="Begin Applying"
-    >
-      {@html applyIcon}
-      Begin Applying
-    </button>
-  </div>
-  {#if loadingState === 'filtering'}
-    <div class="applying-filters-wrap">
-      <div class="applying-filters-pill">
-        <span class="applying-filters-spinner"></span>
-        Applying filters…
-      </div>
-    </div>
-  {/if}
-
-    <aside class="details-sidebar" class:collapsed={sidebarCollapsed}>
-    <div class="sidebar-header">
-      <button
-        class="sidebar-collapse-btn"
-        onclick={toggleSidebar}
-        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        title={sidebarCollapsed ? 'Expand' : 'Collapse'}
-      >
-        <span class="sidebar-collapse-icon" class:flipped={sidebarCollapsed}>{@html chevronsIcon}</span>
-      </button>
-    </div>
-
-    <div class="sidebar-scroll">
-      <div class="sidebar-section">
-        <div class="fill-details-row">
-          <!-- TODO: compute this from real section-completion state -->
-          <div class="completeness-ring"><span>2/3</span></div>
-          <div>
-            <p class="sidebar-heading sidebar-label">Fill details</p>
-            <p class="sidebar-subtext sidebar-label">2 of 3 sections done</p>
-          </div>
-        </div>
-        <button class="sidebar-btn" onclick={() => openDetailModal('personal')}>
-          {@html userIcon}
-          <span class="sidebar-label">Edit personal info</span>
-        </button>
-        <button class="sidebar-btn" onclick={() => openDetailModal('preferences')}>
-          {@html preferencesIcon}
-          <span class="sidebar-label">Edit preferences</span>
-        </button>
-      </div>
-
-      <div class="sidebar-section">
-        <button class="sidebar-btn sidebar-btn-outline" onclick={() => (showResumesModal = true)}>
-          {@html uploadIcon}
-          <span class="sidebar-label" style="flex:1;">Upload resume</span>
-          {#if resumes.length > 0}
-            <span class="sidebar-count sidebar-label">{resumes.length}</span>
-          {/if}
-        </button>
-      </div>
-
-      <div class="sidebar-divider"></div>
-
-      <div class="sidebar-section sidebar-section-plain">
-        <button class="sidebar-btn" title="View archived">
-          {@html archiveIcon}
-          <span class="sidebar-label">View archived</span>
-        </button>
-        <button class="sidebar-btn">
-          {@html settingsIcon}
-          <span class="sidebar-label">Settings</span>
-        </button>
-        <button class="sidebar-btn" onclick={() => openDetailModal('help')}>
-          {@html questionMarkIcon}
-          <span class="sidebar-label">Help</span>
-        </button>
-      </div>
-
-      <p class="sidebar-stat sidebar-label">{jobs.length} postings tracked this week</p>
-    </div>
-
-    <p class="sidebar-version sidebar-label">v0.4.2</p>
-  </aside>
-
-  {#if activeDetailModal}
-    <div
-      class="filter-menu-backdrop"
-      role="button"
-      tabindex="0"
-      aria-label="Close"
-      onclick={closeDetailModal}
-      onkeydown={(e) => { if (e.key === 'Escape') closeDetailModal(); }}
-    >
-      <div
-        class="detail-modals"
-        role="dialog"
-        aria-modal="true"
-        aria-label={activeDetailModal === 'personal' ? 'Edit personal info'
-          : activeDetailModal === 'preferences' ? 'Edit preferences' : 'Help'}
-        tabindex="-1"
-        onclick={(e) => e.stopPropagation()}
-        onkeydown={(e) => { if (e.key === 'Escape') closeDetailModal(); e.stopPropagation(); }}
-      >
-        <div class="filter-popup-header" class:help-header={activeDetailModal === 'help'}>
-          {#if activeDetailModal === 'help'}
-            <span class="help-qmark" aria-hidden="true">?</span>
-          {:else}
-            <span>{activeDetailModal === 'personal' ? 'Edit personal info' : 'Edit preferences'}</span>
-          {/if}
-          <button class="icon-btn filter-popup-close" onclick={closeDetailModal} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
-          </button>
-        </div>
-        {#if activeDetailModal === 'personal'}
+        {:else if activeModal === 'personal'}
           <div class="pi-tip">
             <span class="help-qmark" aria-hidden="true">?</span>
             <p>This data is used by the form autofiller. The more accurate and complete it is, the better your applications get filled out.</p>
@@ -1091,9 +1052,61 @@ async function performWipe(target) {
               <div class="field"><label for="pi-disability">Disability status</label><input id="pi-disability" bind:value={eeocDisability} /></div>
             </div>
           {/if}
-        {:else if activeDetailModal === 'preferences'}
+
+        {:else if activeModal === 'preferences'}
           <p class="filter-hint"><!-- TODO: real fields -->Auto-fill screening questions, and which listings to skip.</p>
-        {:else}
+
+        {:else if activeModal === 'resumes'}
+          <p class="filter-hint">Tag each resume with the titles it should be used for.</p>
+
+          <div class="resumes-list">
+            {#each resumes as resume (resume.id)}
+              <div class="resume-row">
+                <div class="resume-row-top">
+                  {@html fileTextIcon}
+                  <span class="resume-name">{resume.name}</span>
+                  <button class="icon-btn" onclick={() => removeResume(resume.id)} aria-label="Remove {resume.name}">
+                    {@html deleteIcon}
+                  </button>
+                </div>
+                <div class="resume-tags">
+                  {#each resume.tags as tag, i}
+                    <span class="keyword-pill include">
+                      {tag}
+                      <button class="keyword-pill-remove" onclick={() => removeResumeTag(resume.id, i)} aria-label="Remove {tag}">×</button>
+                    </span>
+                  {/each}
+                  <input
+                    class="resume-tag-input"
+                    placeholder="add a title tag..."
+                    onkeydown={(e) => {
+                      if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault();
+                        addResumeTag(resume.id, e.target.value);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            {:else}
+              <p class="note">No resumes uploaded yet.</p>
+            {/each}
+          </div>
+
+          <label class="add-resume-dropzone">
+            {@html uploadIcon}
+            <span>Add another resume</span>
+            <input type="file" accept=".pdf,.doc,.docx" hidden onchange={addResume} />
+          </label>
+
+        {:else if activeModal === 'fetch'}
+          <!-- TODO: fetch modal content -->
+
+        {:else if activeModal === 'apply'}
+          <!-- TODO: apply modal content -->
+
+        {:else if activeModal === 'help'}
           <div class="help-hero">
             <span class="help-gh-badge">
               <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -1117,7 +1130,7 @@ async function performWipe(target) {
             <p class="help-data-text">
               Your data is stored only on your own device. AI features are run locally, and only
               data you agree to share will be given out. This can be configured in
-              <button class="help-inline-link" onclick={() => (activeDetailModal = 'preferences')}>Edit preferences</button>.
+              <button class="help-inline-link" onclick={() => openModal('preferences')}>Edit preferences</button>.
             </p>
           </div>
 
@@ -1162,143 +1175,13 @@ async function performWipe(target) {
             {/if}
           </div>
         {/if}
-        {#if activeDetailModal !== 'help'}
+
+        {#if SAVEABLE_MODALS.includes(activeModal)}
           <div class="filter-popup-footer">
-            <button class="chip" onclick={closeDetailModal}>Close</button>
-            <button class="chip apply-btn" onclick={closeDetailModal}>Save changes</button>
+            <button class="chip" onclick={closeModal}>Close</button>
+            <button class="chip apply-btn" onclick={closeModal}>Save changes</button>
           </div>
         {/if}
-      </div>
-    </div>
-  {/if}
-
-  {#if showResumesModal}
-    <div
-      class="filter-menu-backdrop"
-      role="button"
-      tabindex="0"
-      aria-label="Close"
-      onclick={() => (showResumesModal = false)}
-      onkeydown={(e) => { if (e.key === 'Escape') showResumesModal = false; }}
-    >
-      <div
-        class="detail-modals"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Resumes"
-        tabindex="-1"
-        onclick={(e) => e.stopPropagation()}
-        onkeydown={(e) => { if (e.key === 'Escape') showResumesModal = false; e.stopPropagation(); }}
-      >    
-        <div class="filter-popup-header">
-          <span>Resumes</span>
-          <button class="icon-btn filter-popup-close" onclick={() => (showResumesModal = false)} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
-          </button>
-        </div>
-        <p class="filter-hint">Tag each resume with the titles it should be used for.</p>
-
-        <div class="resumes-list">
-          {#each resumes as resume (resume.id)}
-            <div class="resume-row">
-              <div class="resume-row-top">
-                {@html fileTextIcon}
-                <span class="resume-name">{resume.name}</span>
-                <button class="icon-btn" onclick={() => removeResume(resume.id)} aria-label="Remove {resume.name}">
-                  {@html deleteIcon}
-                </button>
-              </div>
-              <div class="resume-tags">
-                {#each resume.tags as tag, i}
-                  <span class="keyword-pill include">
-                    {tag}
-                    <button class="keyword-pill-remove" onclick={() => removeResumeTag(resume.id, i)} aria-label="Remove {tag}">×</button>
-                  </span>
-                {/each}
-                <input
-                  class="resume-tag-input"
-                  placeholder="add a title tag..."
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter' || e.key === ',') {
-                      e.preventDefault();
-                      addResumeTag(resume.id, e.target.value);
-                      e.target.value = '';
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          {:else}
-            <p class="note">No resumes uploaded yet.</p>
-          {/each}
-        </div>
-
-        <label class="add-resume-dropzone">
-          {@html uploadIcon}
-          <span>Add another resume</span>
-          <input type="file" accept=".pdf,.doc,.docx" hidden onchange={addResume} />
-        </label>
-
-        <div class="filter-popup-footer">
-          <button class="chip" onclick={() => (showResumesModal = false)}>Close</button>
-          <button class="chip apply-btn" onclick={() => (showResumesModal = false)}>Save changes</button>
-        </div>
-      </div>
-    </div>
-  {/if}
-  {#if showFetchModal}
-    <div
-      class="filter-menu-backdrop"
-      role="button"
-      tabindex="0"
-      aria-label="Close"
-      onclick={() => (showFetchModal = false)}
-      onkeydown={(e) => { if (e.key === 'Escape') showFetchModal = false; }}
-    >
-      <div
-        class="detail-modals"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Fetch jobs"
-        tabindex="-1"
-        onclick={(e) => e.stopPropagation()}
-        onkeydown={(e) => { if (e.key === 'Escape') showFetchModal = false; e.stopPropagation(); }}
-      >
-        <div class="filter-popup-header">
-          <span>Fetch jobs</span>
-          <button class="icon-btn filter-popup-close" onclick={() => (showFetchModal = false)} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
-          </button>
-        </div>
-        <!-- TODO: fetch modal content -->
-      </div>
-    </div>
-  {/if}
-  {#if showApplyModal}
-    <div
-      class="filter-menu-backdrop"
-      role="button"
-      tabindex="0"
-      aria-label="Close"
-      onclick={() => (showApplyModal = false)}
-      onkeydown={(e) => { if (e.key === 'Escape') showApplyModal = false; }}
-    >
-      <div
-        class="detail-modals"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Begin applying"
-        tabindex="-1"
-        onclick={(e) => e.stopPropagation()}
-        onkeydown={(e) => { if (e.key === 'Escape') showApplyModal = false; e.stopPropagation(); }}
-      >
-        <div class="filter-popup-header">
-          <span>Begin applying</span>
-          <button class="icon-btn filter-popup-close" onclick={() => (showApplyModal = false)} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
-          </button>
-        </div>
-        <!-- TODO: apply modal content -->
       </div>
     </div>
   {/if}
