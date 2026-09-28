@@ -108,16 +108,16 @@ body {
   background: var(--paper);
   border: 1px solid var(--border-strong);
   border-radius: 10px;
-  width: 460px;
-  height: 635px;
   max-width: calc(100vw - 40px);
-  max-height: min(600px, calc(100vh - 80px));
   overflow-y: auto;
   overflow-x: auto;
   overscroll-behavior: contain;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   padding: 1.1rem 1.25rem 1rem;
 }
+.detail-modals.modal-medium { width: 460px; height: 635px; max-height: min(600px, calc(100vh - 80px)); }
+.detail-modals.modal-large { width: 680px; height: 720px; max-height: min(720px, calc(100vh - 80px)); padding-left: 1.75rem; padding-right: 1.75rem; }
+.detail-modals.modal-large .filter-popup-header { margin-left: -0.5rem; margin-right: -0.5rem; }
 
 .filter-popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 15px; font-weight: 600; }
 .filter-popup-close { width: 24px; height: 24px; }

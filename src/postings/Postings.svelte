@@ -824,6 +824,8 @@ async function performWipe(target) {
     >
       <div
         class="detail-modals"
+        class:modal-large={activeModal === 'personal'}
+        class:modal-medium={activeModal !== 'personal'}
         role="dialog"
         aria-modal="true"
         aria-label={MODAL_TITLES[activeModal]}
