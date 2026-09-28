@@ -552,3 +552,47 @@ body {
 .pi-tip { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0 18px; }
 .pi-tip p { margin: 0; font-size: 12px; color: var(--ink-muted); line-height: 1.5; padding-top: 2px; }
 .eeoc-toggle { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; margin: 10px 0 6px; cursor: pointer; }
+
+/* Personal info: Basic / Questions switch */
+.pi-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.pi-switch-btn {
+  padding: 10px 14px; border: 1px solid var(--border-soft); border-radius: 8px; background: #fff;
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer;
+}
+.pi-switch-btn:hover:not(.on) { background: var(--border-soft); }
+.pi-switch-btn.on { background: var(--seg-bg); border-color: var(--new); color: var(--new); }
+
+/* Personal info: Questions tab */
+.q-progress-label { font-size: 11px; color: var(--ink-muted); margin-bottom: 4px; }
+.q-progress { height: 6px; background: var(--border-soft); border-radius: 3px; margin-bottom: 12px; overflow: hidden; }
+.q-progress i { display: block; height: 100%; background: var(--shortlist); transition: width 0.2s ease; }
+
+.q-card { background: #fff; border: 1px solid var(--border-soft); border-left: 4px solid var(--c); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+.q-title { margin: 0 0 9px; font-size: 13.5px; font-weight: 600; display: flex; gap: 8px; align-items: flex-start; line-height: 1.35; }
+.q-num {
+  flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+  background: color-mix(in srgb, var(--c) 14%, white); color: var(--c);
+  font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+}
+.q-kind { margin-left: auto; padding-top: 3px; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--c); white-space: nowrap; }
+.q-star { color: #c98a4b; }
+.q-sub { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--ink-muted); }
+
+.q-textarea {
+  width: 100%; box-sizing: border-box; min-height: 64px; padding: 8px 10px;
+  border: 1px solid var(--border-soft); border-radius: 6px; background: #fff; color: var(--ink);
+  font: inherit; font-size: 12.5px; resize: vertical;
+}
+.q-star3 label { display: block; margin: 7px 0 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-muted); }
+.q-star3 .q-textarea { min-height: 40px; }
+.q-template-btn { margin-top: 5px; padding: 0; border: none; background: none; font-size: 11px; color: var(--new); cursor: pointer; }
+.q-template-btn:hover { text-decoration: underline; }
+.q-note { width: 100%; box-sizing: border-box; margin-top: 8px; padding: 6px 9px; border: 1px solid var(--border-soft); border-radius: 6px; background: #fff; font: inherit; font-size: 12px; }
+.q-grp { margin: 8px 0 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+
+.q-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.q-pill { padding: 4px 11px; border: 1px solid var(--border-soft); border-radius: 16px; background: #fff; font: inherit; font-size: 12px; color: var(--ink-muted); cursor: pointer; }
+.q-pill:hover:not(.on) { border-color: var(--border-strong); color: var(--ink); }
+.q-pill.on { border-color: var(--c, var(--new)); background: color-mix(in srgb, var(--c, var(--new)) 12%, white); color: var(--c, var(--new)); }
+.q-pill.add { border-style: dashed; color: var(--new); }
+.q-pill-input { width: 96px; padding: 4px 11px; border: 1px dashed var(--new); border-radius: 16px; background: #fff; font: inherit; font-size: 12px; outline: none; }

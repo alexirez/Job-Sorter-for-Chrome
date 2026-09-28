@@ -401,6 +401,100 @@
   }
   function removeSkill(index) { skills = skills.filter((_, i) => i !== index); }
 
+  // ---- Edit personal info: Questions tab ----
+  const CARD_COLORS = ['var(--new)', 'var(--shortlist)', 'var(--applied)'];
+  const BONUS_COLOR = '#c98a4b';
+  const KIND_LABELS = { open: 'Write', star: 'STAR template', pills: 'Pick', one: 'Pick one', dual: 'Pick', bonus: 'Optional' };
+  const STAR_FIELDS = [
+    { key: 'situation', label: 'Situation', placeholder: 'What was going on?' },
+    { key: 'action', label: 'What I did', placeholder: 'Your specific actions' },
+    { key: 'result', label: 'Result', placeholder: 'The outcome, with numbers if you have them' }
+  ];
+
+  // kind: 'open' (textarea) | 'star' (Situation/Action/Result) | 'pills' (multi-pick)
+  //       | 'one' (single pick, optional note) | 'dual' (two pill groups) | 'bonus'
+  const QUESTIONS = [
+    { id: 'describe', kind: 'open', title: 'Describe yourself in one paragraph',
+      placeholder: "I'm a [role] with [X years] in [field]. I'm known for [strength], and I'm looking for [what's next].",
+      template: "I'm a [role] with [X years] of experience in [field]. I'm known for [strength], and I'm looking for [what's next]." },
+    { id: 'passions', kind: 'dual', title: 'Passions & work preferences',
+      passions: ['Developer tools', 'Accessibility', 'Open source', 'Education', 'Healthcare', 'Climate'],
+      prefs: ['Remote', 'Hybrid', 'Small team', 'Async-first', 'Fast-paced', 'Mentorship'] },
+    { id: 'strengths', kind: 'pills', title: 'What are your greatest strengths?',
+      options: ['Problem solving', 'Communication', 'Ownership', 'Adaptability', 'Attention to detail', 'Mentoring'] },
+    { id: 'challenge', kind: 'star', title: 'Describe a challenge you overcame that showed your work ethic' },
+    { id: 'coworkers', kind: 'pills', title: 'How would coworkers describe you?',
+      options: ['Reliable', 'Curious', 'Calm under pressure', 'Direct', 'Collaborative', 'Creative'] },
+    { id: 'achievement', kind: 'star', title: 'What is your proudest professional achievement?' },
+    { id: 'motivation', kind: 'pills', title: 'What motivates you most?',
+      options: ['Impact', 'Learning', 'Craft', 'Autonomy', 'Recognition', 'Team wins'] },
+    { id: 'initiative', kind: 'star', title: 'Describe a time you led or took initiative' },
+    { id: 'management', kind: 'one', title: 'What management style helps you do your best work?',
+      options: ['Hands-off', 'Regular check-ins', 'Mentor-style', 'Direct feedback'] },
+    { id: 'mistake', kind: 'star', title: 'Describe a mistake and what you learned from it' },
+    { id: 'leaving', kind: 'one', title: 'Why did you leave (or are you leaving) your last role?',
+      options: ['Growth', 'Compensation', 'Layoff', 'Relocation', 'Career change', 'Other'], note: true },
+    { id: 'conflict', kind: 'open', title: 'How do you handle conflict on a team?',
+      template: 'When a disagreement comes up, I start by [first step]. For example, when [situation], I [action], and the result was [outcome].' },
+    { id: 'priorities', kind: 'open', title: 'How do you prioritize when everything is urgent?',
+      template: 'I start by [how you sort the list]. Then I [how you communicate or decide]. The last time this happened, I [example].' },
+    { id: 'fiveyears', kind: 'open', title: 'Where do you see yourself in five years?',
+      template: "In five years I'd like to be [role or scope], having built expertise in [skills]. I'm drawn to this path because [reason]." },
+    { id: 'hire', kind: 'open', title: 'Why should we hire you?',
+      template: 'I bring [top strength] plus [second strength]. In my last role I [proof point], and I can do the same here by [what you would do].' },
+    { id: 'bonus', kind: 'bonus', title: 'Bonus question',
+      subtitle: "Anything not covered above you'd like the autofiller to know.",
+      placeholder: 'Keep it short, e.g. career gaps, a move, constraints.' }
+  ];
+
+  function emptyAnswer(q) {
+    if (q.kind === 'star') return { situation: '', action: '', result: '' };
+    if (q.kind === 'pills') return [];
+    if (q.kind === 'one') return { value: '', note: '' };
+    if (q.kind === 'dual') return { passions: [], prefs: [] };
+    return ''; // open, bonus
+  }
+
+  let personalSection = $state('basic'); // 'basic' | 'questions'
+  let answers = $state(Object.fromEntries(QUESTIONS.map((q) => [q.id, emptyAnswer(q)])));
+
+  function isAnswered(q) {
+    const a = answers[q.id];
+    if (q.kind === 'open' || q.kind === 'bonus') return a.trim() !== '';
+    if (q.kind === 'star') return Object.values(a).some((v) => v.trim() !== '');
+    if (q.kind === 'pills') return a.length > 0;
+    if (q.kind === 'one') return a.value !== '';
+    return a.passions.length > 0 || a.prefs.length > 0; // dual
+  }
+  let answeredCount = $derived(QUESTIONS.filter(isAnswered).length);
+
+  // Pill groups store their picks at holder[key]: an array (multi) or a string (single).
+  // Custom pills live only in that value, so they show up while selected and vanish if deselected.
+  function selectedOf(holder, key, single) {
+    return single ? (holder[key] ? [holder[key]] : []) : holder[key];
+  }
+  function optionsWithCustom(options, selected) {
+    return [...options, ...selected.filter((v) => !options.includes(v))];
+  }
+  function togglePill(holder, key, single, value) {
+    if (single) holder[key] = holder[key] === value ? '' : value;
+    else holder[key] = holder[key].includes(value) ? holder[key].filter((v) => v !== value) : [...holder[key], value];
+  }
+
+  let addingKey = $state(null); // which group's "+ add" is currently an input
+  let addValue = $state('');
+  function startAdd(groupKey) { addingKey = groupKey; addValue = ''; }
+  function cancelAdd() { addValue = ''; addingKey = null; }
+  function commitAdd(holder, key, single) {
+    const value = addValue.trim();
+    if (value) {
+      if (single) holder[key] = value;
+      else if (!holder[key].includes(value)) holder[key] = [...holder[key], value];
+    }
+    cancelAdd();
+  }
+  function focusOnMount(node) { node.focus(); }
+
   function statusCount(key) {
     if (key === 'all') return jobs.length;
     return jobs.filter((j) => j.status === key).length;
@@ -549,6 +643,32 @@ async function performWipe(target) {
   }
 }
 </script>
+
+  {#snippet pillGroup(qid, holder, key, options, single = false)}
+    {@const selected = selectedOf(holder, key, single)}
+    {@const groupKey = `${qid}:${key}`}
+    <div class="q-pills" role="group" aria-labelledby="q-title-{qid}">
+      {#each optionsWithCustom(options, selected) as opt}
+        <button type="button" class="q-pill" class:on={selected.includes(opt)} onclick={() => togglePill(holder, key, single, opt)}>{opt}</button>
+      {/each}
+      {#if addingKey === groupKey}
+        <input
+          class="q-pill-input"
+          bind:value={addValue}
+          use:focusOnMount
+          placeholder="add..."
+          aria-label="Add option"
+          onkeydown={(e) => {
+            if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commitAdd(holder, key, single); }
+            else if (e.key === 'Escape') { e.stopPropagation(); cancelAdd(); }
+          }}
+          onblur={() => commitAdd(holder, key, single)}
+        />
+      {:else}
+        <button type="button" class="q-pill add" onclick={() => startAdd(groupKey)}>+ add</button>
+      {/if}
+    </div>
+  {/snippet}
 
   <div class="postings-page" style="--sidebar-w: {sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px;">  <div class="fixed-topbar">
     <div class="segmented-control">
@@ -924,137 +1044,192 @@ async function performWipe(target) {
         {:else if activeModal === 'personal'}
           <div class="pi-tip">
             <span class="help-qmark" aria-hidden="true">?</span>
-            <p>This data is used by the form autofiller. The more accurate and complete it is, the better your applications get filled out.</p>
+            <p>{personalSection === 'basic'
+              ? 'This data is used by the form autofiller. The more accurate and complete it is, the better your applications get filled out.'
+              : 'Answers you enter will be used to fill open-ended questions with AI inference. Pre-made templates ensure quality responses.'}</p>
+          </div>
+          <div class="pi-switch">
+            <button type="button" class="pi-switch-btn" class:on={personalSection === 'basic'} aria-pressed={personalSection === 'basic'} onclick={() => (personalSection = 'basic')}>Basic</button>
+            <button type="button" class="pi-switch-btn" class:on={personalSection === 'questions'} aria-pressed={personalSection === 'questions'} onclick={() => (personalSection = 'questions')}>Questions</button>
           </div>
 
-          <div class="field-grid">
-            <div class="field"><label for="pi-name">Full name</label><input id="pi-name" bind:value={personalName} /></div>
-            <div class="field"><label for="pi-dob">Date of birth</label><input id="pi-dob" type="date" bind:value={personalDob} /></div>
-          </div>
-
-          <p class="section-title">Contacts</p>
-          <div class="contact-row">
-            <label class="contact-label" for="pi-contact-email">Email</label>
-            <input id="pi-contact-email" class="contact-input" bind:value={contacts.email} placeholder="you@example.com" />
-            <span class="contact-spacer"></span>
-          </div>
-          <div class="contact-row">
-            <label class="contact-label" for="pi-contact-phone">Phone</label>
-            <input id="pi-contact-phone" class="contact-input" bind:value={contacts.phone} placeholder="(555) 010-2938" />
-            <span class="contact-spacer"></span>
-          </div>
-          <div class="contact-row">
-            <label class="contact-label" for="pi-contact-linkedin">LinkedIn</label>
-            <input id="pi-contact-linkedin" class="contact-input" bind:value={contacts.linkedin} placeholder="linkedin.com/in/you" />
-            <span class="contact-spacer"></span>
-          </div>
-          <div class="contact-row">
-            <label class="contact-label" for="pi-contact-github">GitHub</label>
-            <input id="pi-contact-github" class="contact-input" bind:value={contacts.github} placeholder="github.com/you" />
-            <span class="contact-spacer"></span>
-          </div>
-          {#each customContacts as c (c.id)}
-            <div class="contact-row">
-              <input class="contact-input contact-label-input" bind:value={c.label} />
-              <input class="contact-input" bind:value={c.value} />
-              <button class="contact-remove" onclick={() => removeCustomContact(c.id)} aria-label="Remove {c.label}">×</button>
-            </div>
-          {/each}
-          <div class="contact-row">
-            <input class="contact-input contact-label-input" bind:value={newContactLabel} placeholder="Custom" />
-            <input
-              class="contact-input"
-              bind:value={newContactValue}
-              placeholder="value"
-              onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomContact(); } }}
-            />
-            <button class="contact-add" onclick={addCustomContact} aria-label="Add contact">+</button>
-          </div>
-
-          <p class="section-title">Education</p>
-          {#each schools as school (school.id)}
-            <div class="entry-card">
-              {#if schools.length > 1}
-                <button class="entry-remove" onclick={() => removeSchool(school.id)}>Remove</button>
-              {/if}
-              <div class="entry-row"><div class="field"><label for="school-name-{school.id}">School</label><input id="school-name-{school.id}" bind:value={school.name} /></div></div>
-              <div class="entry-row">
-                <div class="field"><label for="school-start-{school.id}">Started</label><input id="school-start-{school.id}" type="month" bind:value={school.start} /></div>
-                <div class="field"><label for="school-end-{school.id}">Graduated <span class="field-optional">— leave blank if ongoing</span></label><input id="school-end-{school.id}" type="month" bind:value={school.end} /></div>
-              </div>
-            </div>
-          {/each}
-          <button class="add-entry-btn" onclick={addSchool}>+ Add another school</button>
-
-          <p class="section-title">Work experience</p>
-          {#each workHistory as job (job.id)}
-            <div class="entry-card">
-              {#if workHistory.length > 1}
-                <button class="entry-remove" onclick={() => removeJob(job.id)}>Remove</button>
-              {/if}
-              <div class="entry-row full"><div class="field"><label for="job-company-{job.id}">Company & title</label><input id="job-company-{job.id}" bind:value={job.company} /></div></div>
-              <div class="entry-row">
-                <div class="field"><label for="job-start-{job.id}">Started</label><input id="job-start-{job.id}" type="month" bind:value={job.start} /></div>
-                <div class="field"><label for="job-end-{job.id}">Ended <span class="field-optional">— leave blank if ongoing</span></label><input id="job-end-{job.id}" type="month" bind:value={job.end} /></div>
-              </div>
-            </div>
-          {/each}
-          <button class="add-entry-btn" onclick={addJob}>+ Add another job</button>
-
-          <p class="section-title">Years of experience</p>
-          <div class="exp-row">
-            <span class="exp-auto">{experienceDisplay} years — calculated from work history</span>
-            <span class="exp-override">Override <input bind:value={experienceOverride} placeholder={experienceDisplay} /></span>
-          </div>
-
-          <p class="section-title">Skills & certifications</p>
-          <div class="keyword-input-box">
-            {#each skills as skill, i}
-              <span class="keyword-pill include">
-                {skill}
-                <button class="keyword-pill-remove" onclick={() => removeSkill(i)} aria-label="Remove {skill}">×</button>
-              </span>
-            {/each}
-            <input
-              class="keyword-input"
-              bind:value={skillInput}
-              placeholder="add a skill or certification..."
-              onkeydown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSkill(); } }}
-            />
-          </div>
-
-          <div class="extras-divider"><span class="extras-label">Extras</span></div>
-          <div class="field-grid">
-            <div class="field"><label for="pi-workauth">Work authorization</label><input id="pi-workauth" bind:value={workAuth} placeholder="e.g. Authorized, no sponsorship needed" /></div>
-            <div class="field"><label for="pi-salary">Desired salary</label><input id="pi-salary" bind:value={desiredSalary} placeholder="e.g. $150,000+" /></div>
-            <div class="field"><label for="pi-startdate">Earliest start date</label><input id="pi-startdate" bind:value={startDate} placeholder="e.g. 2 weeks notice" /></div>
-            <div class="field">
-              <span id="pi-relocation-label" class="field-label">Relocation</span>
-              <div class="pill-row" role="group" aria-labelledby="pi-relocation-label">
-                <button type="button" class="pill-toggle" class:active={relocation === 'remote'} onclick={() => (relocation = 'remote')}>Remote only</button>
-                <button type="button" class="pill-toggle" class:active={relocation === 'hybrid'} onclick={() => (relocation = 'hybrid')}>Hybrid</button>
-                <button type="button" class="pill-toggle" class:active={relocation === 'relocate'} onclick={() => (relocation = 'relocate')}>Relocate</button>
-              </div>
-            </div>
-          </div>
-
-          <label class="eeoc-toggle">
-            <span>Voluntary demographic info (EEOC)</span>
-            <span class="toggle-switch" class:on={eeocEnabled}>
-              <input type="checkbox" class="sr-only-checkbox" checked={eeocEnabled} onchange={() => (eeocEnabled = !eeocEnabled)} />
-            </span>
-          </label>
-          {#if eeocEnabled}
+          {#if personalSection === 'basic'}
             <div class="field-grid">
-              <div class="field"><label for="pi-gender">Gender</label><input id="pi-gender" bind:value={eeocGender} /></div>
-              <div class="field"><label for="pi-race">Race / ethnicity</label><input id="pi-race" bind:value={eeocRace} /></div>
-              <div class="field"><label for="pi-veteran">Veteran status</label><input id="pi-veteran" bind:value={eeocVeteran} /></div>
-              <div class="field"><label for="pi-disability">Disability status</label><input id="pi-disability" bind:value={eeocDisability} /></div>
+              <div class="field"><label for="pi-name">Full name</label><input id="pi-name" bind:value={personalName} /></div>
+              <div class="field"><label for="pi-dob">Date of birth</label><input id="pi-dob" type="date" bind:value={personalDob} /></div>
             </div>
+
+            <p class="section-title">Contacts</p>
+            <div class="contact-row">
+              <label class="contact-label" for="pi-contact-email">Email</label>
+              <input id="pi-contact-email" class="contact-input" bind:value={contacts.email} placeholder="you@example.com" />
+              <span class="contact-spacer"></span>
+            </div>
+            <div class="contact-row">
+              <label class="contact-label" for="pi-contact-phone">Phone</label>
+              <input id="pi-contact-phone" class="contact-input" bind:value={contacts.phone} placeholder="(555) 010-2938" />
+              <span class="contact-spacer"></span>
+            </div>
+            <div class="contact-row">
+              <label class="contact-label" for="pi-contact-linkedin">LinkedIn</label>
+              <input id="pi-contact-linkedin" class="contact-input" bind:value={contacts.linkedin} placeholder="linkedin.com/in/you" />
+              <span class="contact-spacer"></span>
+            </div>
+            <div class="contact-row">
+              <label class="contact-label" for="pi-contact-github">GitHub</label>
+              <input id="pi-contact-github" class="contact-input" bind:value={contacts.github} placeholder="github.com/you" />
+              <span class="contact-spacer"></span>
+            </div>
+            {#each customContacts as c (c.id)}
+              <div class="contact-row">
+                <input class="contact-input contact-label-input" bind:value={c.label} />
+                <input class="contact-input" bind:value={c.value} />
+                <button class="contact-remove" onclick={() => removeCustomContact(c.id)} aria-label="Remove {c.label}">×</button>
+              </div>
+            {/each}
+            <div class="contact-row">
+              <input class="contact-input contact-label-input" bind:value={newContactLabel} placeholder="Custom" />
+              <input
+                class="contact-input"
+                bind:value={newContactValue}
+                placeholder="value"
+                onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomContact(); } }}
+              />
+              <button class="contact-add" onclick={addCustomContact} aria-label="Add contact">+</button>
+            </div>
+
+            <p class="section-title">Education</p>
+            {#each schools as school (school.id)}
+              <div class="entry-card">
+                {#if schools.length > 1}
+                  <button class="entry-remove" onclick={() => removeSchool(school.id)}>Remove</button>
+                {/if}
+                <div class="entry-row"><div class="field"><label for="school-name-{school.id}">School</label><input id="school-name-{school.id}" bind:value={school.name} /></div></div>
+                <div class="entry-row">
+                  <div class="field"><label for="school-start-{school.id}">Started</label><input id="school-start-{school.id}" type="month" bind:value={school.start} /></div>
+                  <div class="field"><label for="school-end-{school.id}">Graduated <span class="field-optional">— leave blank if ongoing</span></label><input id="school-end-{school.id}" type="month" bind:value={school.end} /></div>
+                </div>
+              </div>
+            {/each}
+            <button class="add-entry-btn" onclick={addSchool}>+ Add another school</button>
+
+            <p class="section-title">Work experience</p>
+            {#each workHistory as job (job.id)}
+              <div class="entry-card">
+                {#if workHistory.length > 1}
+                  <button class="entry-remove" onclick={() => removeJob(job.id)}>Remove</button>
+                {/if}
+                <div class="entry-row full"><div class="field"><label for="job-company-{job.id}">Company & title</label><input id="job-company-{job.id}" bind:value={job.company} /></div></div>
+                <div class="entry-row">
+                  <div class="field"><label for="job-start-{job.id}">Started</label><input id="job-start-{job.id}" type="month" bind:value={job.start} /></div>
+                  <div class="field"><label for="job-end-{job.id}">Ended <span class="field-optional">— leave blank if ongoing</span></label><input id="job-end-{job.id}" type="month" bind:value={job.end} /></div>
+                </div>
+              </div>
+            {/each}
+            <button class="add-entry-btn" onclick={addJob}>+ Add another job</button>
+
+            <p class="section-title">Years of experience</p>
+            <div class="exp-row">
+              <span class="exp-auto">{experienceDisplay} years — calculated from work history</span>
+              <span class="exp-override">Override <input bind:value={experienceOverride} placeholder={experienceDisplay} /></span>
+            </div>
+
+            <p class="section-title">Skills & certifications</p>
+            <div class="keyword-input-box">
+              {#each skills as skill, i}
+                <span class="keyword-pill include">
+                  {skill}
+                  <button class="keyword-pill-remove" onclick={() => removeSkill(i)} aria-label="Remove {skill}">×</button>
+                </span>
+              {/each}
+              <input
+                class="keyword-input"
+                bind:value={skillInput}
+                placeholder="add a skill or certification..."
+                onkeydown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSkill(); } }}
+              />
+            </div>
+
+            <div class="extras-divider"><span class="extras-label">Extras</span></div>
+            <div class="field-grid">
+              <div class="field"><label for="pi-workauth">Work authorization</label><input id="pi-workauth" bind:value={workAuth} placeholder="e.g. Authorized, no sponsorship needed" /></div>
+              <div class="field"><label for="pi-salary">Desired salary</label><input id="pi-salary" bind:value={desiredSalary} placeholder="e.g. $150,000+" /></div>
+              <div class="field"><label for="pi-startdate">Earliest start date</label><input id="pi-startdate" bind:value={startDate} placeholder="e.g. 2 weeks notice" /></div>
+              <div class="field">
+                <span id="pi-relocation-label" class="field-label">Relocation</span>
+                <div class="pill-row" role="group" aria-labelledby="pi-relocation-label">
+                  <button type="button" class="pill-toggle" class:active={relocation === 'remote'} onclick={() => (relocation = 'remote')}>Remote only</button>
+                  <button type="button" class="pill-toggle" class:active={relocation === 'hybrid'} onclick={() => (relocation = 'hybrid')}>Hybrid</button>
+                  <button type="button" class="pill-toggle" class:active={relocation === 'relocate'} onclick={() => (relocation = 'relocate')}>Relocate</button>
+                </div>
+              </div>
+            </div>
+
+            <label class="eeoc-toggle">
+              <span>Voluntary demographic info (EEOC)</span>
+              <span class="toggle-switch" class:on={eeocEnabled}>
+                <input type="checkbox" class="sr-only-checkbox" checked={eeocEnabled} onchange={() => (eeocEnabled = !eeocEnabled)} />
+              </span>
+            </label>
+            {#if eeocEnabled}
+              <div class="field-grid">
+                <div class="field"><label for="pi-gender">Gender</label><input id="pi-gender" bind:value={eeocGender} /></div>
+                <div class="field"><label for="pi-race">Race / ethnicity</label><input id="pi-race" bind:value={eeocRace} /></div>
+                <div class="field"><label for="pi-veteran">Veteran status</label><input id="pi-veteran" bind:value={eeocVeteran} /></div>
+                <div class="field"><label for="pi-disability">Disability status</label><input id="pi-disability" bind:value={eeocDisability} /></div>
+              </div>
+            {/if}
+          {:else}
+            <div class="q-progress-label">{answeredCount} of {QUESTIONS.length} answered</div>
+            <div class="q-progress"><i style="width: {(answeredCount / QUESTIONS.length) * 100}%"></i></div>
+
+            {#each QUESTIONS as q, i (q.id)}
+              <div class="q-card" style="--c: {q.kind === 'bonus' ? BONUS_COLOR : CARD_COLORS[i % CARD_COLORS.length]}">
+                <h4 class="q-title" id="q-title-{q.id}">
+                  <span class="q-num" aria-hidden="true">{q.kind === 'bonus' ? '★' : i + 1}</span>
+                  <span>
+                    {#if q.kind === 'bonus'}<span class="q-star">★</span> {/if}{q.title}
+                    {#if q.subtitle}<span class="q-sub">{q.subtitle}</span>{/if}
+                  </span>
+                  <span class="q-kind">{KIND_LABELS[q.kind]}</span>
+                </h4>
+
+                {#if q.kind === 'open' || q.kind === 'bonus'}
+                  <textarea
+                    class="q-textarea"
+                    aria-labelledby="q-title-{q.id}"
+                    bind:value={answers[q.id]}
+                    placeholder={q.placeholder ?? 'Write 2–4 sentences. Specifics beat generalities.'}
+                  ></textarea>
+                  {#if q.template && !answers[q.id].trim()}
+                    <button type="button" class="q-template-btn" onclick={() => (answers[q.id] = q.template)}>✦ Insert starter template</button>
+                  {/if}
+                {:else if q.kind === 'star'}
+                  <div class="q-star3">
+                    {#each STAR_FIELDS as f}
+                      <label for="q-{q.id}-{f.key}">{f.label}</label>
+                      <textarea id="q-{q.id}-{f.key}" class="q-textarea" bind:value={answers[q.id][f.key]} placeholder={f.placeholder}></textarea>
+                    {/each}
+                  </div>
+                {:else if q.kind === 'pills'}
+                  {@render pillGroup(q.id, answers, q.id, q.options)}
+                {:else if q.kind === 'one'}
+                  {@render pillGroup(q.id, answers[q.id], 'value', q.options, true)}
+                  {#if q.note}
+                    <input class="q-note" bind:value={answers[q.id].note} placeholder="Optional: one line of context" aria-label="Optional context" />
+                  {/if}
+                {:else}
+                  <div class="q-grp" style="color: var(--new)">Passions</div>
+                  <div style="--c: var(--new)">{@render pillGroup(q.id, answers[q.id], 'passions', q.passions)}</div>
+                  <div class="q-grp" style="color: var(--shortlist)">Work preferences</div>
+                  <div style="--c: var(--shortlist)">{@render pillGroup(q.id, answers[q.id], 'prefs', q.prefs)}</div>
+                {/if}
+              </div>
+            {/each}
           {/if}
 
         {:else if activeModal === 'preferences'}
-          <p class="filter-hint"><!-- TODO: real fields -->Auto-fill screening questions, and which listings to skip.</p>
+          <p class="filter-hint"><!-- TODO: real fields -->App preferences (show by salary, hourly, auto and other app details to customize).</p>
 
         {:else if activeModal === 'resumes'}
           <p class="filter-hint">Tag each resume with the titles it should be used for.</p>
