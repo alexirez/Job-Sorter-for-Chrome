@@ -516,9 +516,6 @@ body {
 .field input { font-size: 13px; padding: 7px 9px; border: 1px solid var(--border-soft); border-radius: 6px; background: #fff; color: var(--ink); }
 .field-optional { font-weight: 400; font-style: italic; color: var(--ink-muted); }
 
-.section-title { font-size: 13px; font-weight: 700; margin: 18px 0 2px; color: var(--ink); }
-.section-hint { font-size: 11px; color: var(--ink-muted); margin: 0 0 10px; }
-
 .contact-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .contact-label { flex: 0 0 72px; font-size: 12px; color: var(--ink-muted); cursor: pointer; }
 .contact-input { flex: 1; font-size: 13px; padding: 6px 9px; border: 1px solid var(--border-soft); border-radius: 6px; background: #fff; color: var(--ink); }
@@ -551,7 +548,6 @@ body {
 .extras-label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-muted); }
 .pi-tip { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0 18px; }
 .pi-tip p { margin: 0; font-size: 12px; color: var(--ink-muted); line-height: 1.5; padding-top: 2px; }
-.eeoc-toggle { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; margin: 10px 0 6px; cursor: pointer; }
 
 /* Personal info: Basic / Questions switch */
 .pi-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
@@ -595,3 +591,54 @@ body {
 .q-pill.on { border-color: var(--c, var(--new)); background: color-mix(in srgb, var(--c, var(--new)) 12%, white); color: var(--c, var(--new)); }
 .q-pill.add { border-style: dashed; color: var(--new); }
 .q-pill-input { width: 96px; padding: 4px 11px; border: 1px dashed var(--new); border-radius: 16px; background: #fff; font: inherit; font-size: 12px; outline: none; }
+
+/* Basic tab: timeline rail */
+.postings-page { --bonus: #c98a4b; }
+
+.bs-rail { position: relative; padding-left: 38px; }
+.bs-rail::before {
+  content: ""; position: absolute; left: 13px; top: 6px; bottom: 6px; width: 2px;
+  background: linear-gradient(var(--new), var(--shortlist), var(--applied), var(--bonus));
+}
+.bs { position: relative; margin-bottom: 22px; }
+.bs:last-child { margin-bottom: 0; }
+.bs-node {
+  position: absolute; left: -38px; top: -2px; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--c); color: #fff; font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 4px var(--paper);
+}
+.bs-title { margin: 0 0 10px; padding-top: 3px; font-size: 14px; color: var(--c); display: flex; align-items: center; gap: 8px; }
+.bs-title:has(+ .bs-sub) { margin-bottom: 2px; }
+.bs-sub { margin: 0 0 10px; font-size: 11px; color: var(--ink-muted); }
+.bs-status {
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+  background: color-mix(in srgb, var(--ink-muted) 14%, white); color: var(--ink-muted);
+}
+.bs-status.done { background: color-mix(in srgb, var(--c) 14%, white); color: var(--c); }
+
+/* Tinted underline inputs (skips the skills "+ add" pill input) */
+.bs input:not(.q-pill-input), .bs select {
+  font: inherit; font-size: 13px; padding: 7px 9px; min-width: 0; outline: none;
+  border: 0; border-bottom: 2px solid color-mix(in srgb, var(--c) 30%, var(--border-soft));
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--c) 6%, #fff); color: var(--ink);
+}
+.bs input:not(.q-pill-input):focus, .bs select:focus {
+  border-bottom-color: var(--c); background: color-mix(in srgb, var(--c) 10%, #fff);
+}
+.bs .field select { width: 100%; box-sizing: border-box; }
+.bs .exp-override input { width: 54px; padding: 4px 6px; }
+.bs .entry-card { border-color: color-mix(in srgb, var(--c) 30%, var(--border-soft)); background: color-mix(in srgb, var(--c) 4%, #fff); }
+.bs .add-entry-btn { color: var(--c); }
+.bs .exp-auto { background: color-mix(in srgb, var(--c) 14%, white); color: var(--c); }
+.bs .contact-add { background: color-mix(in srgb, var(--c) 14%, white); color: var(--c); }
+.bs .pill-toggle.active { border-color: var(--c); background: color-mix(in srgb, var(--c) 12%, white); color: var(--c); }
+
+/* Skills */
+.bs-add-line { margin-top: 8px; }
+.bs-add-line .q-pill-input { width: 240px; }
+.q-pill-x { background: none; border: none; color: inherit; cursor: pointer; padding: 0 0 0 6px; font-size: 13px; line-height: 1; }
+
+/* Rainbow progress bar for the Basic tab */
+.q-progress i { background: linear-gradient(90deg, var(--new), var(--shortlist), var(--applied)); }
