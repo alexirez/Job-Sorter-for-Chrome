@@ -512,7 +512,7 @@
       { value: 'instant', label: 'instantly' },
       { value: 'human', label: 'at human speed (avoid anti-bot detection)' }] },
     cover:  { color: 'var(--bonus)', options: [
-      { value: 'mine', label: 'always use mine, or mark Unresolved' },
+      { value: 'mine', label: 'always use mine, otherwise mark Unresolved' },
       { value: 'ai', label: 'generate one based on what you know about me' }] }
   };
 
