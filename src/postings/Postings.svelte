@@ -58,6 +58,7 @@
     help: 'Help'
   };
   const SAVEABLE_MODALS = ['personal', 'preferences', 'resumes'];
+  const LARGE_MODALS = ['personal', 'preferences'];
 
   let activeModal = $state(null); // a key of MODAL_TITLES, or null when nothing is open
   let modalNode = $state(null);
@@ -917,8 +918,8 @@ async function performWipe(target) {
     >
       <div
         class="detail-modals"
-        class:modal-large={activeModal === 'personal'}
-        class:modal-medium={activeModal !== 'personal'}
+        class:modal-large={LARGE_MODALS.includes(activeModal)}
+        class:modal-medium={!LARGE_MODALS.includes(activeModal)}
         role="dialog"
         aria-modal="true"
         aria-label={MODAL_TITLES[activeModal]}
