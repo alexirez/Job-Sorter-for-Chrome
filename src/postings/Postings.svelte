@@ -1188,7 +1188,7 @@ async function performWipe(target) {
                 <h4 class="q-title" id="q-title-{q.id}">
                   <span class="q-num" aria-hidden="true">{q.kind === 'bonus' ? '★' : i + 1}</span>
                   <span>
-                    {#if q.kind === 'bonus'}<span class="q-star">★</span> {/if}{q.title}
+                    {q.title}
                     {#if q.subtitle}<span class="q-sub">{q.subtitle}</span>{/if}
                   </span>
                   <span class="q-kind">{KIND_LABELS[q.kind]}</span>
