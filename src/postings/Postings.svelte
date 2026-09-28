@@ -54,6 +54,7 @@
     resumes: 'Resumes',
     fetch: 'Fetch jobs',
     apply: 'Begin applying',
+    settings: 'Settings',
     help: 'Help'
   };
   const SAVEABLE_MODALS = ['personal', 'preferences', 'resumes'];
@@ -384,7 +385,7 @@
   let workAuth = $state('');
   let desiredSalary = $state('');
   let startDate = $state('');
-  let relocation = $state('remote'); // 'remote' | 'hybrid' | 'relocate'
+  let relocation = $state('remote'); // 'very_likely' | 'no' | 'own_country'
   let eeocEnabled = $state(false);
   let eeocGender = $state('');
   let eeocRace = $state('');
@@ -799,7 +800,7 @@ async function performWipe(target) {
           {@html archiveIcon}
           <span class="sidebar-label">View archived</span>
         </button>
-        <button class="sidebar-btn">
+        <button class="sidebar-btn" onclick={() => openModal('settings')}>
           {@html settingsIcon}
           <span class="sidebar-label">Settings</span>
         </button>
@@ -1158,11 +1159,11 @@ async function performWipe(target) {
               <div class="field"><label for="pi-salary">Desired salary</label><input id="pi-salary" bind:value={desiredSalary} placeholder="e.g. $150,000+" /></div>
               <div class="field"><label for="pi-startdate">Earliest start date</label><input id="pi-startdate" bind:value={startDate} placeholder="e.g. 2 weeks notice" /></div>
               <div class="field">
-                <span id="pi-relocation-label" class="field-label">Relocation</span>
+                <span id="pi-relocation-label" class="field-label">Are you willing to relocate?</span>
                 <div class="pill-row" role="group" aria-labelledby="pi-relocation-label">
-                  <button type="button" class="pill-toggle" class:active={relocation === 'remote'} onclick={() => (relocation = 'remote')}>Remote only</button>
-                  <button type="button" class="pill-toggle" class:active={relocation === 'hybrid'} onclick={() => (relocation = 'hybrid')}>Hybrid</button>
-                  <button type="button" class="pill-toggle" class:active={relocation === 'relocate'} onclick={() => (relocation = 'relocate')}>Relocate</button>
+                  <button type="button" class="pill-toggle" class:active={relocation === 'very_likely'} onclick={() => (relocation = 'very_likely')}>Very likely</button>
+                  <button type="button" class="pill-toggle" class:active={relocation === 'no'} onclick={() => (relocation = 'no')}>No</button>
+                  <button type="button" class="pill-toggle" class:active={relocation === 'own_country'} onclick={() => (relocation = 'own_country')}>Only in my own country</button>
                 </div>
               </div>
             </div>
@@ -1282,6 +1283,9 @@ async function performWipe(target) {
 
         {:else if activeModal === 'apply'}
           <!-- TODO: apply modal content -->
+        
+        {:else if activeModal === 'settings'}
+          <!-- TODO: settings modal content -->
 
         {:else if activeModal === 'help'}
           <div class="help-hero">
