@@ -300,12 +300,13 @@
   });
 
   $effect(() => {
-    if (!activeDetailModal && !showResumesModal && !showFetchModal) return;
+    if (!activeDetailModal && !showResumesModal && !showFetchModal && !showApplyModal) return;
     function onKey(e) {
       if (e.key !== 'Escape') return;
       closeDetailModal();
       showResumesModal = false;
       showFetchModal = false;
+      showApplyModal = false;
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -320,6 +321,7 @@
   let activeDetailModal = $state(null); // 'personal' | 'preferences' | null
   let showResumesModal = $state(false);
   let showFetchModal = $state(false);
+  let showApplyModal = $state(false);
   let wipeTarget = $state(null);  // 'personal' | 'postings' | null — which button is armed
   let wiping = $state(null);      // 'personal' | 'postings' | null — which is in flight
   let wipeError = $state('');
@@ -847,7 +849,7 @@ async function performWipe(target) {
     </button>
     <button
       class="begin-applying-btn"
-      onclick={beginApplying}
+      onclick={() => (showApplyModal = true)}
       aria-label="Begin Applying"
       title="Begin Applying"
     >
@@ -1269,6 +1271,34 @@ async function performWipe(target) {
           </button>
         </div>
         <!-- TODO: fetch modal content -->
+      </div>
+    </div>
+  {/if}
+  {#if showApplyModal}
+    <div
+      class="filter-menu-backdrop"
+      role="button"
+      tabindex="0"
+      aria-label="Close"
+      onclick={() => (showApplyModal = false)}
+      onkeydown={(e) => { if (e.key === 'Escape') showApplyModal = false; }}
+    >
+      <div
+        class="detail-modals"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Begin applying"
+        tabindex="-1"
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={(e) => { if (e.key === 'Escape') showApplyModal = false; e.stopPropagation(); }}
+      >
+        <div class="filter-popup-header">
+          <span>Begin applying</span>
+          <button class="icon-btn filter-popup-close" onclick={() => (showApplyModal = false)} aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
+          </button>
+        </div>
+        <!-- TODO: apply modal content -->
       </div>
     </div>
   {/if}
