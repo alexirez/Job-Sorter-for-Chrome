@@ -642,3 +642,55 @@ body {
 
 /* Rainbow progress bar for the Basic tab */
 .q-progress i { background: linear-gradient(90deg, var(--new), var(--shortlist), var(--applied)); }
+
+/* Preferences modal */
+.pf-head {
+  display: flex; align-items: center; gap: 10px; margin: 22px 0 10px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c);
+}
+.pf > .pf-head:first-child { margin-top: 12px; }
+.pf-head-icon {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  background: var(--c); color: #fff; display: flex; align-items: center; justify-content: center;
+}
+.pf-head-icon svg { width: 14px; height: 14px; }
+.pf-head::after { content: ""; flex: 1; height: 2px; border-radius: 1px; background: linear-gradient(90deg, var(--c), transparent); }
+
+.pf-sentence { font-size: 16px; line-height: 2.2; margin: 0 0 6px; }
+.pf-pill {
+  display: inline; padding: 3px 12px; border-radius: 16px;
+  background: var(--c); color: #fff; font-weight: 700; cursor: pointer; user-select: none;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  transition: filter 0.12s ease;
+}
+.pf-pill:hover { filter: brightness(1.1); }
+.pf-pill:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pf-pill::after { content: " ▾"; font-size: 10px; opacity: 0.8; }
+
+.pf-pick { margin: 0; font-size: 16px; font-weight: 600; color: var(--new); }
+
+/* Automation style timeline */
+.pf-auto {
+  --c: var(--new);
+  position: relative; display: flex; flex-direction: column; gap: 6px;
+  margin: 8px 0 10px; padding-left: 22px;
+}
+.pf-auto::before { content: ""; position: absolute; left: 8px; top: 14px; bottom: 14px; width: 2px; background: var(--border-soft); }
+.pf-auto-opt {
+  position: relative; display: flex; flex-direction: column; width: 100%; text-align: left;
+  padding: 9px 12px; border-radius: 12px; border: 1.5px solid transparent;
+  background: color-mix(in srgb, var(--c) 5%, #fff); color: inherit; font: inherit; cursor: pointer;
+}
+.pf-auto-opt::before {
+  content: ""; position: absolute; left: -19px; top: 14px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--paper); border: 2px solid var(--border-strong);
+}
+.pf-auto-opt b { font-size: 13.5px; }
+.pf-auto-opt small { font-size: 11px; color: var(--ink-muted); }
+.pf-auto-opt:hover:not(.on) { border-color: var(--border-strong); }
+.pf-auto-opt.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 13%, #fff); }
+.pf-auto-opt.on::before { background: var(--c); border-color: var(--c); }
+.pf-auto-opt.on b { color: var(--c); }
+
+/* Font: Large */
+.postings-page.font-large { zoom: 1.12; }

@@ -3,7 +3,7 @@
   import {
      questionMarkIcon, filterIcon, chevronIcon, deleteIcon, archiveIcon,
      applyIcon, uploadIcon, chevronsIcon, userIcon, preferencesIcon,
-     settingsIcon, fileTextIcon
+     settingsIcon, fileTextIcon, slidersIcon, boltIcon, eyeOffIcon
   } from '../ui/assets/icons';
   import './postings.css';
 
@@ -493,6 +493,52 @@
   });
   let sectionsDone = $derived(Object.values(basicStatus).filter((s) => s.done).length);
 
+  // ---- Edit preferences ----
+  const PREF_FIELDS = {
+    theme:  { color: 'var(--new)', options: [
+      { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }, { value: 'system', label: 'System' }] },
+    size:   { color: 'var(--shortlist)', options: [
+      { value: 'default', label: 'Default' }, { value: 'large', label: 'Large' }] },
+    comp:   { color: 'var(--bonus)', options: [
+      { value: 'salary', label: 'Salary' }, { value: 'hourly', label: 'Hourly' }, { value: 'auto', label: 'Auto' }] },
+    resume: { color: 'var(--applied)', options: [
+      { value: 'tags', label: 'my tags, or mark Unresolved' },
+      { value: 'ai', label: 'let AI decide when unsure' }] },
+    open:   { color: 'var(--new)', options: [
+      { value: 'exact', label: 'use my exact responses when possible, otherwise mark Unresolved' },
+      { value: 'ai', label: 'let AI generate all responses for variety' }] },
+    speed:  { color: 'var(--shortlist)', options: [
+      { value: 'instant', label: 'instantly' },
+      { value: 'human', label: 'at human speed (avoid anti-bot detection)' }] },
+    cover:  { color: 'var(--bonus)', options: [
+      { value: 'mine', label: 'always use mine, or mark Unresolved' },
+      { value: 'ai', label: 'generate one based on what you know about me' }] }
+  };
+
+  const AUTOMATION_OPTIONS = [
+    { value: 'always_submit', title: 'Always submit when possible', desc: 'Fills and submits without asking.' },
+    { value: 'mark_uncertain', title: 'Mark Uncertain when data is missing', desc: 'Fills what it can and flags the gaps for you.' },
+    { value: 'simple_only', title: 'Only fill simple fields', desc: 'Names, contacts and dates. You do the rest.' }
+  ];
+
+  // TODO: persist these (e.g. chrome.storage.local) and load them on mount.
+  // "Save changes" currently just closes the modal, like the other saveable modals.
+  let prefs = $state({
+    theme: 'system', size: 'default', comp: 'auto',
+    automation: 'mark_uncertain',
+    resume: 'tags', open: 'exact',
+    speed: 'human', cover: 'mine'
+  });
+
+  function prefLabel(key) {
+    return PREF_FIELDS[key].options.find((o) => o.value === prefs[key])?.label;
+  }
+  function cyclePref(key) {
+    const { options } = PREF_FIELDS[key];
+    const i = options.findIndex((o) => o.value === prefs[key]);
+    prefs[key] = options[(i + 1) % options.length].value;
+  }
+
   // Pill groups store their picks at holder[key]: an array (multi) or a string (single).
   // Custom pills live only in that value, so they show up while selected and vanish if deselected.
   function selectedOf(holder, key, single) {
@@ -699,8 +745,25 @@ async function performWipe(target) {
     <h4 class="bs-title">{title}<span class="bs-status" class:done={status.done}>{status.text}</span></h4>
     {#if sub}<p class="bs-sub">{sub}</p>{/if}
   {/snippet}
+  {#snippet prefHeader(title, color, icon)}
+    <div class="pf-head" style="--c: {color}">
+      <span class="pf-head-icon" aria-hidden="true">{@html icon}</span>{title}
+    </div>
+  {/snippet}
 
-  <div class="postings-page" style="--sidebar-w: {sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px;">  <div class="fixed-topbar">
+  {#snippet prefPill(key)}
+    <span
+      class="pf-pill"
+      style="--c: {PREF_FIELDS[key].color}"
+      role="button"
+      tabindex="0"
+      title="Click to change"
+      onclick={() => cyclePref(key)}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cyclePref(key); } }}
+    >{prefLabel(key)}</span>
+  {/snippet}
+
+  <div class="postings-page" class:font-large={prefs.size === 'large'} style="--sidebar-w: {sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px;">  <div class="fixed-topbar">
     <div class="segmented-control">
       {#each STATUS_TABS as tab}
         <button class="segment" class:active={activeStatus === tab.key} onclick={() => (activeStatus = tab.key)}>
@@ -1307,10 +1370,36 @@ async function performWipe(target) {
               </div>
             {/each}
           {/if}
-
         {:else if activeModal === 'preferences'}
-          <p class="filter-hint"><!-- TODO: real fields -->App preferences (show by salary, hourly, auto and other app details to customize).</p>
+          <div class="pf">
+            {@render prefHeader('App Customization', 'var(--new)', slidersIcon)}
+            <p class="pf-sentence">Use the {@render prefPill('theme')} Theme with a {@render prefPill('size')} font.</p>
+            <p class="pf-sentence">Show pay as {@render prefPill('comp')}.</p>
 
+            {@render prefHeader('Autofiller Preferences', 'var(--shortlist)', boltIcon)}
+            <p class="pf-pick">Pick an automation style below</p>
+            <div class="pf-auto" role="radiogroup" aria-label="Automation style">
+              {#each AUTOMATION_OPTIONS as opt}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={prefs.automation === opt.value}
+                  class="pf-auto-opt"
+                  class:on={prefs.automation === opt.value}
+                  onclick={() => (prefs.automation = opt.value)}
+                >
+                  <b>{opt.title}</b>
+                  <small>{opt.desc}</small>
+                </button>
+              {/each}
+            </div>
+            <p class="pf-sentence">Upload the best resume based on {@render prefPill('resume')}.</p>
+            <p class="pf-sentence">For open-ended questions, {@render prefPill('open')}.</p>
+
+            {@render prefHeader('Stealth Options', 'var(--bonus)', eyeOffIcon)}
+            <p class="pf-sentence">Fill applications {@render prefPill('speed')}.</p>
+            <p class="pf-sentence">For cover letters, {@render prefPill('cover')}.</p>
+          </div>
         {:else if activeModal === 'resumes'}
           <p class="filter-hint">Tag each resume with the titles it should be used for.</p>
 
