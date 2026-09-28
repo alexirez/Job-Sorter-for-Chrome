@@ -317,11 +317,17 @@ body {
 
 .wipe-error { color: var(--rejected); margin-top: 6px; }
 
-.begin-applying-btn {
+.top-actions {
   position: fixed;
   top: 14px;
   right: 16px;
   z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.begin-applying-btn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -337,6 +343,25 @@ body {
 }
 .begin-applying-btn svg { width: 15px; height: 15px; }
 .begin-applying-btn:hover { opacity: 0.9; }
+
+.fetch-jobs-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6.5px 14.5px; /* 1.5px border + padding = same 8px/16px footprint as Begin Applying */
+  border: 1.5px solid var(--new);
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--new);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.fetch-jobs-btn svg { width: 15px; height: 15px; }
+.fetch-jobs-btn:hover { background: var(--seg-bg); }
+.fetch-jobs-btn:hover svg { animation: fetch-spin 0.8s linear infinite; }
+@keyframes fetch-spin { to { transform: rotate(360deg); } }
 
 .content-flow {
   margin: 112px 24px 60px calc(var(--sidebar-w) + 12px);

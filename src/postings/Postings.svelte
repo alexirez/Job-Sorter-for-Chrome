@@ -300,11 +300,12 @@
   });
 
   $effect(() => {
-    if (!activeDetailModal && !showResumesModal) return;
+    if (!activeDetailModal && !showResumesModal && !showFetchModal) return;
     function onKey(e) {
       if (e.key !== 'Escape') return;
       closeDetailModal();
       showResumesModal = false;
+      showFetchModal = false;
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -318,6 +319,7 @@
   let sidebarCollapsed = $state(false);
   let activeDetailModal = $state(null); // 'personal' | 'preferences' | null
   let showResumesModal = $state(false);
+  let showFetchModal = $state(false);
   let wipeTarget = $state(null);  // 'personal' | 'postings' | null — which button is armed
   let wiping = $state(null);      // 'personal' | 'postings' | null — which is in flight
   let wipeError = $state('');
@@ -833,15 +835,26 @@ async function performWipe(target) {
     {/if}
   </div>
 
-  <button
-    class="begin-applying-btn"
-    onclick={beginApplying}
-    aria-label="Begin Applying"
-    title="Begin Applying"
-  >
-    {@html applyIcon}
-    Begin Applying
-  </button>
+  <div class="top-actions">
+    <button
+      class="fetch-jobs-btn"
+      onclick={() => (showFetchModal = true)}
+      aria-label="Fetch Jobs"
+      title="Fetch Jobs"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0113.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 01-13.7 5.6L4 15M4 20v-5h5" /></svg>
+      Fetch Jobs
+    </button>
+    <button
+      class="begin-applying-btn"
+      onclick={beginApplying}
+      aria-label="Begin Applying"
+      title="Begin Applying"
+    >
+      {@html applyIcon}
+      Begin Applying
+    </button>
+  </div>
   {#if loadingState === 'filtering'}
     <div class="applying-filters-wrap">
       <div class="applying-filters-pill">
@@ -1228,6 +1241,34 @@ async function performWipe(target) {
           <button class="chip" onclick={() => (showResumesModal = false)}>Close</button>
           <button class="chip apply-btn" onclick={() => (showResumesModal = false)}>Save changes</button>
         </div>
+      </div>
+    </div>
+  {/if}
+  {#if showFetchModal}
+    <div
+      class="filter-menu-backdrop"
+      role="button"
+      tabindex="0"
+      aria-label="Close"
+      onclick={() => (showFetchModal = false)}
+      onkeydown={(e) => { if (e.key === 'Escape') showFetchModal = false; }}
+    >
+      <div
+        class="detail-modals"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Fetch jobs"
+        tabindex="-1"
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={(e) => { if (e.key === 'Escape') showFetchModal = false; e.stopPropagation(); }}
+      >
+        <div class="filter-popup-header">
+          <span>Fetch jobs</span>
+          <button class="icon-btn filter-popup-close" onclick={() => (showFetchModal = false)} aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" /></svg>
+          </button>
+        </div>
+        <!-- TODO: fetch modal content -->
       </div>
     </div>
   {/if}
