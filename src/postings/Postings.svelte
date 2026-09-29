@@ -1153,173 +1153,175 @@ async function performWipe(target) {
             <div class="q-progress-label">{sectionsDone} of {BASIC_TOTAL} sections complete</div>
             <div class="q-progress"><i style="width: {(sectionsDone / BASIC_TOTAL) * 100}%"></i></div>
 
-            <div class="bs-rail">
-              <!-- 1 Identity -->
-              <div class="bs" style="--c: var(--new)">
-                {@render sectionHead(1, 'Identity', basicStatus.identity)}
-                <div class="field-grid">
-                  <div class="field"><label for="pi-name">Full name</label><input id="pi-name" bind:value={personalName} /></div>
-                  <div class="field"><label for="pi-dob">Date of birth</label><input id="pi-dob" type="date" bind:value={personalDob} /></div>
+            <div class="pi-body">
+              <div class="bs-rail">
+                <!-- 1 Identity -->
+                <div class="bs" style="--c: var(--new)">
+                  {@render sectionHead(1, 'Identity', basicStatus.identity)}
+                  <div class="field-grid">
+                    <div class="field"><label for="pi-name">Full name</label><input id="pi-name" bind:value={personalName} /></div>
+                    <div class="field"><label for="pi-dob">Date of birth</label><input id="pi-dob" type="date" bind:value={personalDob} /></div>
+                  </div>
                 </div>
-              </div>
 
-              <!-- 2 Contacts -->
-              <div class="bs" style="--c: var(--shortlist)">
-                {@render sectionHead(2, 'Contacts', basicStatus.contacts)}
-                <div class="contact-row">
-                  <label class="contact-label" for="pi-contact-email">Email</label>
-                  <input id="pi-contact-email" class="contact-input" bind:value={contacts.email} placeholder="you@example.com" />
-                  <span class="contact-spacer"></span>
-                </div>
-                <div class="contact-row">
-                  <label class="contact-label" for="pi-contact-phone">Phone</label>
-                  <input id="pi-contact-phone" class="contact-input" bind:value={contacts.phone} placeholder="(555) 010-2938" />
-                  <span class="contact-spacer"></span>
-                </div>
-                <div class="contact-row">
-                  <label class="contact-label" for="pi-contact-linkedin">LinkedIn</label>
-                  <input id="pi-contact-linkedin" class="contact-input" bind:value={contacts.linkedin} placeholder="linkedin.com/in/you" />
-                  <span class="contact-spacer"></span>
-                </div>
-                <div class="contact-row">
-                  <label class="contact-label" for="pi-contact-github">GitHub</label>
-                  <input id="pi-contact-github" class="contact-input" bind:value={contacts.github} placeholder="github.com/you" />
-                  <span class="contact-spacer"></span>
-                </div>
-                {#each customContacts as c (c.id)}
+                <!-- 2 Contacts -->
+                <div class="bs" style="--c: var(--shortlist)">
+                  {@render sectionHead(2, 'Contacts', basicStatus.contacts)}
                   <div class="contact-row">
-                    <input class="contact-input contact-label-input" bind:value={c.label} />
-                    <input class="contact-input" bind:value={c.value} />
-                    <button class="contact-remove" onclick={() => removeCustomContact(c.id)} aria-label="Remove {c.label}">×</button>
+                    <label class="contact-label" for="pi-contact-email">Email</label>
+                    <input id="pi-contact-email" class="contact-input" bind:value={contacts.email} placeholder="you@example.com" />
+                    <span class="contact-spacer"></span>
                   </div>
-                {/each}
-                <div class="contact-row">
-                  <input class="contact-input contact-label-input" bind:value={newContactLabel} placeholder="Custom" />
-                  <input
-                    class="contact-input"
-                    bind:value={newContactValue}
-                    placeholder="value"
-                    onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomContact(); } }}
-                  />
-                  <button class="contact-add" onclick={addCustomContact} aria-label="Add contact">+</button>
-                </div>
-              </div>
-
-              <!-- 3 Education -->
-              <div class="bs" style="--c: var(--applied)">
-                {@render sectionHead(3, 'Education', basicStatus.education, 'Add every school you attended')}
-                {#each schools as school (school.id)}
-                  <div class="entry-card">
-                    {#if schools.length > 1}
-                      <button class="entry-remove" onclick={() => removeSchool(school.id)}>Remove</button>
-                    {/if}
-                    <div class="entry-row full"><div class="field"><label for="school-name-{school.id}">School</label><input id="school-name-{school.id}" bind:value={school.name} /></div></div>
-                    <div class="entry-row">
-                      <div class="field"><label for="school-start-{school.id}">Started</label><input id="school-start-{school.id}" type="month" bind:value={school.start} /></div>
-                      <div class="field"><label for="school-end-{school.id}">Graduated <span class="field-optional">— leave blank if ongoing</span></label><input id="school-end-{school.id}" type="month" bind:value={school.end} /></div>
+                  <div class="contact-row">
+                    <label class="contact-label" for="pi-contact-phone">Phone</label>
+                    <input id="pi-contact-phone" class="contact-input" bind:value={contacts.phone} placeholder="(555) 010-2938" />
+                    <span class="contact-spacer"></span>
+                  </div>
+                  <div class="contact-row">
+                    <label class="contact-label" for="pi-contact-linkedin">LinkedIn</label>
+                    <input id="pi-contact-linkedin" class="contact-input" bind:value={contacts.linkedin} placeholder="linkedin.com/in/you" />
+                    <span class="contact-spacer"></span>
+                  </div>
+                  <div class="contact-row">
+                    <label class="contact-label" for="pi-contact-github">GitHub</label>
+                    <input id="pi-contact-github" class="contact-input" bind:value={contacts.github} placeholder="github.com/you" />
+                    <span class="contact-spacer"></span>
+                  </div>
+                  {#each customContacts as c (c.id)}
+                    <div class="contact-row">
+                      <input class="contact-input contact-label-input" bind:value={c.label} />
+                      <input class="contact-input" bind:value={c.value} />
+                      <button class="contact-remove" onclick={() => removeCustomContact(c.id)} aria-label="Remove {c.label}">×</button>
                     </div>
+                  {/each}
+                  <div class="contact-row">
+                    <input class="contact-input contact-label-input" bind:value={newContactLabel} placeholder="Custom" />
+                    <input
+                      class="contact-input"
+                      bind:value={newContactValue}
+                      placeholder="value"
+                      onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomContact(); } }}
+                    />
+                    <button class="contact-add" onclick={addCustomContact} aria-label="Add contact">+</button>
                   </div>
-                {/each}
-                <button class="add-entry-btn" onclick={addSchool}>+ Add another school</button>
-              </div>
+                </div>
 
-              <!-- 4 Work experience -->
-              <div class="bs" style="--c: var(--bonus)">
-                {@render sectionHead(4, 'Work experience', basicStatus.work, "Add every role you've held")}
-                {#each workHistory as job (job.id)}
-                  <div class="entry-card">
-                    {#if workHistory.length > 1}
-                      <button class="entry-remove" onclick={() => removeJob(job.id)}>Remove</button>
-                    {/if}
-                    <div class="entry-row">
-                      <div class="field"><label for="job-company-{job.id}">Company & title</label><input id="job-company-{job.id}" bind:value={job.company} /></div>
-                      <div class="field">
-                        <label for="job-type-{job.id}">Employment type</label>
-                        <select id="job-type-{job.id}" bind:value={job.type}>
-                          <option value="">Select…</option>
-                          {#each JOB_TYPES as t}<option value={t}>{t}</option>{/each}
-                        </select>
+                <!-- 3 Education -->
+                <div class="bs" style="--c: var(--applied)">
+                  {@render sectionHead(3, 'Education', basicStatus.education, 'Add every school you attended')}
+                  {#each schools as school (school.id)}
+                    <div class="entry-card">
+                      {#if schools.length > 1}
+                        <button class="entry-remove" onclick={() => removeSchool(school.id)}>Remove</button>
+                      {/if}
+                      <div class="entry-row full"><div class="field"><label for="school-name-{school.id}">School</label><input id="school-name-{school.id}" bind:value={school.name} /></div></div>
+                      <div class="entry-row">
+                        <div class="field"><label for="school-start-{school.id}">Started</label><input id="school-start-{school.id}" type="month" bind:value={school.start} /></div>
+                        <div class="field"><label for="school-end-{school.id}">Graduated <span class="field-optional">— leave blank if ongoing</span></label><input id="school-end-{school.id}" type="month" bind:value={school.end} /></div>
                       </div>
                     </div>
-                    <div class="entry-row">
-                      <div class="field"><label for="job-start-{job.id}">Started</label><input id="job-start-{job.id}" type="month" bind:value={job.start} /></div>
-                      <div class="field"><label for="job-end-{job.id}">Ended <span class="field-optional">— leave blank if ongoing</span></label><input id="job-end-{job.id}" type="month" bind:value={job.end} /></div>
-                    </div>
-                  </div>
-                {/each}
-                <button class="add-entry-btn" onclick={addJob}>+ Add another job</button>
-              </div>
-
-              <!-- 5 Years of experience -->
-              <div class="bs" style="--c: var(--new)">
-                {@render sectionHead(5, 'Years of experience', basicStatus.experience)}
-                <div class="exp-row">
-                  <span class="exp-auto">{experienceDisplay} years — calculated from work history</span>
-                  <span class="exp-override">Override <input bind:value={experienceOverride} placeholder={experienceDisplay} /></span>
+                  {/each}
+                  <button class="add-entry-btn" onclick={addSchool}>+ Add another school</button>
                 </div>
-              </div>
 
-              <!-- 6 Skills -->
-              <div class="bs" style="--c: var(--shortlist)">
-                {@render sectionHead(6, 'Skills & certifications', basicStatus.skills)}
-                {#if skills.length > 0}
-                  <div class="q-pills">
-                    {#each skills as skill, i}
-                      <span class="q-pill on">{skill}<button type="button" class="q-pill-x" onclick={() => removeSkill(i)} aria-label="Remove {skill}">×</button></span>
-                    {/each}
+                <!-- 4 Work experience -->
+                <div class="bs" style="--c: var(--bonus)">
+                  {@render sectionHead(4, 'Work experience', basicStatus.work, "Add every role you've held")}
+                  {#each workHistory as job (job.id)}
+                    <div class="entry-card">
+                      {#if workHistory.length > 1}
+                        <button class="entry-remove" onclick={() => removeJob(job.id)}>Remove</button>
+                      {/if}
+                      <div class="entry-row">
+                        <div class="field"><label for="job-company-{job.id}">Company & title</label><input id="job-company-{job.id}" bind:value={job.company} /></div>
+                        <div class="field">
+                          <label for="job-type-{job.id}">Employment type</label>
+                          <select id="job-type-{job.id}" bind:value={job.type}>
+                            <option value="">Select…</option>
+                            {#each JOB_TYPES as t}<option value={t}>{t}</option>{/each}
+                          </select>
+                        </div>
+                      </div>
+                      <div class="entry-row">
+                        <div class="field"><label for="job-start-{job.id}">Started</label><input id="job-start-{job.id}" type="month" bind:value={job.start} /></div>
+                        <div class="field"><label for="job-end-{job.id}">Ended <span class="field-optional">— leave blank if ongoing</span></label><input id="job-end-{job.id}" type="month" bind:value={job.end} /></div>
+                      </div>
+                    </div>
+                  {/each}
+                  <button class="add-entry-btn" onclick={addJob}>+ Add another job</button>
+                </div>
+
+                <!-- 5 Years of experience -->
+                <div class="bs" style="--c: var(--new)">
+                  {@render sectionHead(5, 'Years of experience', basicStatus.experience)}
+                  <div class="exp-row">
+                    <span class="exp-auto">{experienceDisplay} years — calculated from work history</span>
+                    <span class="exp-override">Override <input bind:value={experienceOverride} placeholder={experienceDisplay} /></span>
                   </div>
-                {/if}
-                <div class="bs-add-line">
-                  {#if addingKey === 'skills'}
-                    <input
-                      class="q-pill-input"
-                      bind:value={addValue}
-                      use:focusOnMount
-                      placeholder="add a skill or certification..."
-                      aria-label="Add skill or certification"
-                      onkeydown={(e) => {
-                        if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commitSkill(true); }
-                        else if (e.key === 'Escape') { e.stopPropagation(); cancelAdd(); }
-                      }}
-                      onblur={() => commitSkill()}
-                    />
-                  {:else}
-                    <button type="button" class="q-pill add" onclick={() => startAdd('skills')}>+ add</button>
+                </div>
+
+                <!-- 6 Skills -->
+                <div class="bs" style="--c: var(--shortlist)">
+                  {@render sectionHead(6, 'Skills & certifications', basicStatus.skills)}
+                  {#if skills.length > 0}
+                    <div class="q-pills">
+                      {#each skills as skill, i}
+                        <span class="q-pill on">{skill}<button type="button" class="q-pill-x" onclick={() => removeSkill(i)} aria-label="Remove {skill}">×</button></span>
+                      {/each}
+                    </div>
                   {/if}
-                </div>
-              </div>
-
-              <!-- 7 Extras -->
-              <div class="bs" style="--c: var(--applied)">
-                {@render sectionHead(7, 'Extras', basicStatus.extras)}
-                <div class="field-grid">
-                  <div class="field"><label for="pi-workauth">Work authorization</label><input id="pi-workauth" bind:value={workAuth} placeholder="e.g. Authorized, no sponsorship needed" /></div>
-                  <div class="field"><label for="pi-startdate">Earliest start date</label><input id="pi-startdate" bind:value={startDate} placeholder="e.g. 2 weeks notice" /></div>
-                  <div class="field">
-                    <span id="pi-relocation-label" class="field-label">Are you willing to relocate?</span>
-                    <div class="pill-row" role="group" aria-labelledby="pi-relocation-label">
-                      <button type="button" class="pill-toggle" class:active={relocation === 'very_likely'} onclick={() => (relocation = 'very_likely')}>Very likely</button>
-                      <button type="button" class="pill-toggle" class:active={relocation === 'no'} onclick={() => (relocation = 'no')}>No</button>
-                      <button type="button" class="pill-toggle" class:active={relocation === 'own_country'} onclick={() => (relocation = 'own_country')}>Only in my own country</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="extras-divider"><span class="extras-label">Voluntary demographic info (EEOC)</span></div>
-                <div class="field-grid">
-                  <div class="field"><label for="pi-gender">Gender</label><input id="pi-gender" bind:value={eeocGender} /></div>
-                  <div class="field">
-                    <label for="pi-race">Race / ethnicity</label>
-                    <select id="pi-race" bind:value={eeocRace}>
-                      <option value="">Select…</option>
-                      {#each RACE_OPTIONS as r}<option value={r}>{r}</option>{/each}
-                    </select>
-                    {#if eeocRace === 'Other'}
-                      <input bind:value={eeocRaceOther} placeholder="Please specify" aria-label="Race / ethnicity, other" />
+                  <div class="bs-add-line">
+                    {#if addingKey === 'skills'}
+                      <input
+                        class="q-pill-input"
+                        bind:value={addValue}
+                        use:focusOnMount
+                        placeholder="add a skill or certification..."
+                        aria-label="Add skill or certification"
+                        onkeydown={(e) => {
+                          if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commitSkill(true); }
+                          else if (e.key === 'Escape') { e.stopPropagation(); cancelAdd(); }
+                        }}
+                        onblur={() => commitSkill()}
+                      />
+                    {:else}
+                      <button type="button" class="q-pill add" onclick={() => startAdd('skills')}>+ add</button>
                     {/if}
                   </div>
-                  <div class="field"><label for="pi-veteran">Veteran status</label><input id="pi-veteran" bind:value={eeocVeteran} /></div>
-                  <div class="field"><label for="pi-disability">Disability status</label><input id="pi-disability" bind:value={eeocDisability} /></div>
+                </div>
+
+                <!-- 7 Extras -->
+                <div class="bs" style="--c: var(--applied)">
+                  {@render sectionHead(7, 'Extras', basicStatus.extras)}
+                  <div class="field-grid">
+                    <div class="field"><label for="pi-workauth">Work authorization</label><input id="pi-workauth" bind:value={workAuth} placeholder="e.g. Authorized, no sponsorship needed" /></div>
+                    <div class="field"><label for="pi-startdate">Earliest start date</label><input id="pi-startdate" bind:value={startDate} placeholder="e.g. 2 weeks notice" /></div>
+                    <div class="field">
+                      <span id="pi-relocation-label" class="field-label">Are you willing to relocate?</span>
+                      <div class="pill-row" role="group" aria-labelledby="pi-relocation-label">
+                        <button type="button" class="pill-toggle" class:active={relocation === 'very_likely'} onclick={() => (relocation = 'very_likely')}>Very likely</button>
+                        <button type="button" class="pill-toggle" class:active={relocation === 'no'} onclick={() => (relocation = 'no')}>No</button>
+                        <button type="button" class="pill-toggle" class:active={relocation === 'own_country'} onclick={() => (relocation = 'own_country')}>Only in my own country</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="extras-divider"><span class="extras-label">Voluntary demographic info (EEOC)</span></div>
+                  <div class="field-grid">
+                    <div class="field"><label for="pi-gender">Gender</label><input id="pi-gender" bind:value={eeocGender} /></div>
+                    <div class="field">
+                      <label for="pi-race">Race / ethnicity</label>
+                      <select id="pi-race" bind:value={eeocRace}>
+                        <option value="">Select…</option>
+                        {#each RACE_OPTIONS as r}<option value={r}>{r}</option>{/each}
+                      </select>
+                      {#if eeocRace === 'Other'}
+                        <input bind:value={eeocRaceOther} placeholder="Please specify" aria-label="Race / ethnicity, other" />
+                      {/if}
+                    </div>
+                    <div class="field"><label for="pi-veteran">Veteran status</label><input id="pi-veteran" bind:value={eeocVeteran} /></div>
+                    <div class="field"><label for="pi-disability">Disability status</label><input id="pi-disability" bind:value={eeocDisability} /></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1327,49 +1329,51 @@ async function performWipe(target) {
             <div class="q-progress-label">{answeredCount} of {QUESTIONS.length} answered</div>
             <div class="q-progress"><i style="width: {(answeredCount / QUESTIONS.length) * 100}%"></i></div>
 
-            {#each QUESTIONS as q, i (q.id)}
-              <div class="q-card" style="--c: {q.kind === 'bonus' ? BONUS_COLOR : CARD_COLORS[i % CARD_COLORS.length]}">
-                <h4 class="q-title" id="q-title-{q.id}">
-                  <span class="q-num" aria-hidden="true">{q.kind === 'bonus' ? '★' : i + 1}</span>
-                  <span>
-                    {q.title}
-                    {#if q.subtitle}<span class="q-sub">{q.subtitle}</span>{/if}
-                  </span>
-                  <span class="q-kind">{KIND_LABELS[q.kind]}</span>
-                </h4>
+            <div class="pi-body">
+              {#each QUESTIONS as q, i (q.id)}
+                <div class="q-card" style="--c: {q.kind === 'bonus' ? BONUS_COLOR : CARD_COLORS[i % CARD_COLORS.length]}">
+                  <h4 class="q-title" id="q-title-{q.id}">
+                    <span class="q-num" aria-hidden="true">{q.kind === 'bonus' ? '★' : i + 1}</span>
+                    <span>
+                      {q.title}
+                      {#if q.subtitle}<span class="q-sub">{q.subtitle}</span>{/if}
+                    </span>
+                    <span class="q-kind">{KIND_LABELS[q.kind]}</span>
+                  </h4>
 
-                {#if q.kind === 'open' || q.kind === 'bonus'}
-                  <textarea
-                    class="q-textarea"
-                    aria-labelledby="q-title-{q.id}"
-                    bind:value={answers[q.id]}
-                    placeholder={q.placeholder ?? 'Write 2–4 sentences. Specifics beat generalities.'}
-                  ></textarea>
-                  {#if q.template && !answers[q.id].trim()}
-                    <button type="button" class="q-template-btn" onclick={() => (answers[q.id] = q.template)}>✦ Insert starter template</button>
+                  {#if q.kind === 'open' || q.kind === 'bonus'}
+                    <textarea
+                      class="q-textarea"
+                      aria-labelledby="q-title-{q.id}"
+                      bind:value={answers[q.id]}
+                      placeholder={q.placeholder ?? 'Write 2–4 sentences. Specifics beat generalities.'}
+                    ></textarea>
+                    {#if q.template && !answers[q.id].trim()}
+                      <button type="button" class="q-template-btn" onclick={() => (answers[q.id] = q.template)}>✦ Insert starter template</button>
+                    {/if}
+                  {:else if q.kind === 'star'}
+                    <div class="q-star3">
+                      {#each STAR_FIELDS as f}
+                        <label for="q-{q.id}-{f.key}">{f.label}</label>
+                        <textarea id="q-{q.id}-{f.key}" class="q-textarea" bind:value={answers[q.id][f.key]} placeholder={f.placeholder}></textarea>
+                      {/each}
+                    </div>
+                  {:else if q.kind === 'pills'}
+                    {@render pillGroup(q.id, answers, q.id, q.options)}
+                  {:else if q.kind === 'one'}
+                    {@render pillGroup(q.id, answers[q.id], 'value', q.options, true)}
+                    {#if q.note}
+                      <input class="q-note" bind:value={answers[q.id].note} placeholder="Optional: one line of context" aria-label="Optional context" />
+                    {/if}
+                  {:else}
+                    <div class="q-grp" style="color: var(--new)">Passions</div>
+                    <div style="--c: var(--new)">{@render pillGroup(q.id, answers[q.id], 'passions', q.passions)}</div>
+                    <div class="q-grp" style="color: var(--shortlist)">Work preferences</div>
+                    <div style="--c: var(--shortlist)">{@render pillGroup(q.id, answers[q.id], 'prefs', q.prefs)}</div>
                   {/if}
-                {:else if q.kind === 'star'}
-                  <div class="q-star3">
-                    {#each STAR_FIELDS as f}
-                      <label for="q-{q.id}-{f.key}">{f.label}</label>
-                      <textarea id="q-{q.id}-{f.key}" class="q-textarea" bind:value={answers[q.id][f.key]} placeholder={f.placeholder}></textarea>
-                    {/each}
-                  </div>
-                {:else if q.kind === 'pills'}
-                  {@render pillGroup(q.id, answers, q.id, q.options)}
-                {:else if q.kind === 'one'}
-                  {@render pillGroup(q.id, answers[q.id], 'value', q.options, true)}
-                  {#if q.note}
-                    <input class="q-note" bind:value={answers[q.id].note} placeholder="Optional: one line of context" aria-label="Optional context" />
-                  {/if}
-                {:else}
-                  <div class="q-grp" style="color: var(--new)">Passions</div>
-                  <div style="--c: var(--new)">{@render pillGroup(q.id, answers[q.id], 'passions', q.passions)}</div>
-                  <div class="q-grp" style="color: var(--shortlist)">Work preferences</div>
-                  <div style="--c: var(--shortlist)">{@render pillGroup(q.id, answers[q.id], 'prefs', q.prefs)}</div>
-                {/if}
-              </div>
-            {/each}
+                </div>
+              {/each}
+            </div>
           {/if}
         {:else if activeModal === 'preferences'}
           <div class="pf">
