@@ -3,7 +3,8 @@
   import {
      questionMarkIcon, filterIcon, chevronIcon, deleteIcon, archiveIcon,
      applyIcon, uploadIcon, chevronsIcon, userIcon, preferencesIcon,
-     settingsIcon, fileTextIcon, slidersIcon, boltIcon, eyeOffIcon
+     settingsIcon, fileTextIcon, slidersIcon, boltIcon, eyeOffIcon, 
+     starIcon, warnTriIcon
   } from '../ui/assets/icons';
   import './postings.css';
 
@@ -58,7 +59,7 @@
     help: 'Help'
   };
   const SAVEABLE_MODALS = ['personal', 'preferences', 'resumes'];
-  const LARGE_MODALS = ['personal', 'preferences'];
+  const LARGE_MODALS = ['personal', 'preferences', 'resumes'];
 
   let activeModal = $state(null); // a key of MODAL_TITLES, or null when nothing is open
   let modalNode = $state(null);
@@ -658,25 +659,128 @@
     sidebarCollapsed = !sidebarCollapsed;
   }
 
-  function addResume(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    resumes = [...resumes, { id: crypto.randomUUID(), name: file.name, tags: [] }];
-    e.target.value = '';
+  // ---- Resumes ----
+  // Resume shape: { id, title, sim: string[], fileName, fb }
+  const RESUME_COLORS = ['var(--new)', 'var(--shortlist)', 'var(--applied)', 'var(--bonus)'];
+
+  // Compare titles ignoring case, punctuation, Sr./Jr. and front-end / front end / frontend.
+  function normTitle(s) {
+    return s.toLowerCase().replace(/[.,]/g, '')
+      .replace(/\bsr\b/g, 'senior').replace(/\bjr\b/g, 'junior')
+      .replace(/\b(front|back|full)[\s-]?(end|stack)\b/g, '$1$2')
+      .replace(/-/g, '').replace(/\s+/g, ' ').trim();
+  }
+  const resumeTitles = (r) => [r.title, ...r.sim].filter((t) => t.trim());
+
+  // normalized title → resumes that contain it
+  let titleOwners = $derived.by(() => {
+    const map = new Map();
+    for (const r of resumes) {
+      for (const key of new Set(resumeTitles(r).map(normTitle))) {
+        map.set(key, [...(map.get(key) ?? []), r]);
+      }
+    }
+    return map;
+  });
+  function otherOwners(r, title) {
+    const key = normTitle(title);
+    if (!key) return [];
+    return (titleOwners.get(key) ?? []).filter((q) => q.id !== r.id);
+  }
+  const isDuplicate = (r, title) => otherOwners(r, title).length > 0;
+  const dupNames = (r, title) => otherOwners(r, title).map((q) => q.title.trim() || 'Untitled').join(', ');
+  let sharedTitleCount = $derived([...titleOwners.values()].filter((o) => o.length > 1).length);
+
+  let resumeError = $state('');
+  let dragOverId = $state(null);
+  let removedResume = $state(null); // { resume, index } while the Undo toast is showing
+  let undoTimeout;
+
+  function addResume() {
+    resumes = [...resumes, { id: crypto.randomUUID(), title: '', sim: [], fileName: '', fb: resumes.length === 0 }];
+  }
+
+  function setFallback(id) {
+    resumes.forEach((r) => (r.fb = r.id === id));
+  }
+  function ensureFallback() {
+    if (resumes.length && !resumes.some((r) => r.fb)) resumes[0].fb = true;
   }
 
   function removeResume(id) {
+    const index = resumes.findIndex((r) => r.id === id);
+    if (index < 0) return;
+    removedResume = { resume: $state.snapshot(resumes[index]), index };
     resumes = resumes.filter((r) => r.id !== id);
+    ensureFallback();
+    clearTimeout(undoTimeout);
+    undoTimeout = setTimeout(() => (removedResume = null), 6000);
+  }
+  function undoRemoveResume() {
+    if (!removedResume) return;
+    const { resume, index } = removedResume;
+    const next = [...resumes];
+    next.splice(index, 0, resume);
+    resumes = next;
+    if (resume.fb) setFallback(resume.id);
+    removedResume = null;
+    clearTimeout(undoTimeout);
   }
 
-  function addResumeTag(id, rawValue) {
-    const value = rawValue.trim();
-    if (!value) return;
-    resumes = resumes.map((r) => (r.id === id ? { ...r, tags: [...r.tags, value] } : r));
+  // Accepts "A, B; C" or pasted lines. Skips titles that already exist on this resume.
+  function addResumeTags(id, raw) {
+    const r = resumes.find((x) => x.id === id);
+    if (!r) return;
+    for (const v of raw.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean)) {
+      if (!r.sim.some((x) => normTitle(x) === normTitle(v))) r.sim.push(v);
+    }
   }
-
   function removeResumeTag(id, index) {
-    resumes = resumes.map((r) => (r.id === id ? { ...r, tags: r.tags.filter((_, i) => i !== index) } : r));
+    resumes.find((r) => r.id === id)?.sim.splice(index, 1);
+  }
+  function handleResumeTagKeydown(id, e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addResumeTags(id, e.currentTarget.value);
+      e.currentTarget.value = '';
+    }
+  }
+  function handleResumeTagPaste(id, e) {
+    const text = e.clipboardData?.getData('text') ?? '';
+    if (/[,;\n]/.test(text)) {
+      e.preventDefault();
+      addResumeTags(id, text);
+    }
+  }
+  function handleResumeTagBlur(id, e) {
+    if (e.currentTarget.value.trim()) addResumeTags(id, e.currentTarget.value);
+    e.currentTarget.value = '';
+  }
+  // Escape closes a focused tooltip without also closing the whole modal.
+  function closeTip(e) {
+    if (e.key === 'Escape') { e.stopPropagation(); e.currentTarget.blur(); }
+  }
+
+  function setResumeFile(id, file) {
+    const r = resumes.find((x) => x.id === id);
+    if (!r || !file) return;
+    if (!/\.(pdf|docx?)$/i.test(file.name)) { resumeError = 'Please choose a PDF, DOC or DOCX file.'; return; }
+    resumeError = '';
+    r.fileName = file.name;
+    // TODO: persist the file itself (e.g. read as ArrayBuffer into IndexedDB); only the name is kept for now.
+  }
+  function onResumePick(id, e) {
+    setResumeFile(id, e.currentTarget.files?.[0]);
+    e.currentTarget.value = '';
+  }
+  function onResumeDrop(id, e) {
+    e.preventDefault();
+    dragOverId = null;
+    setResumeFile(id, e.dataTransfer?.files?.[0]);
+  }
+  function clearResumeFile(id) {
+    const r = resumes.find((x) => x.id === id);
+    if (r) r.fileName = '';
   }
 
 function requestWipe(target) {
@@ -1406,49 +1510,140 @@ async function performWipe(target) {
             <p class="pf-sentence">For cover letters, {@render prefPill('cover')}.</p>
           </div>
         {:else if activeModal === 'resumes'}
-          <p class="filter-hint">Tag each resume with the titles it should be used for.</p>
+          <p class="filter-hint">The autofiller picks a resume by matching job titles.</p>
+          {#if resumeError}<p class="filter-hint wipe-error">{resumeError}</p>{/if}
 
-          <div class="resumes-list">
-            {#each resumes as resume (resume.id)}
-              <div class="resume-row">
-                <div class="resume-row-top">
-                  {@html fileTextIcon}
-                  <span class="resume-name">{resume.name}</span>
-                  <button class="icon-btn" onclick={() => removeResume(resume.id)} aria-label="Remove {resume.name}">
-                    {@html deleteIcon}
-                  </button>
+          {#if resumes.length > 0}
+            <div class="rs-map">
+              <div class="rs-map-title">Title coverage</div>
+              {#each resumes as r, i (r.id)}
+                <div class="rs-lane" style="--c: {RESUME_COLORS[i % RESUME_COLORS.length]}">
+                  <span class="rs-dot"></span>
+                  <b class="rs-lane-name">{r.title.trim() || 'Untitled'}{#if r.fb}<span class="rs-lane-star" title="Fallback resume" aria-label="Fallback resume">★</span>{/if}</b>
+                  <span class="rs-lane-pills">
+                    {#each resumeTitles(r) as t}
+                      <span class="rs-mpill" class:dup={isDuplicate(r, t)}>{t}</span>
+                    {/each}
+                  </span>
                 </div>
-                <div class="resume-tags">
-                  {#each resume.tags as tag, i}
-                    <span class="keyword-pill include">
-                      {tag}
-                      <button class="keyword-pill-remove" onclick={() => removeResumeTag(resume.id, i)} aria-label="Remove {tag}">×</button>
+              {/each}
+              <div class="rs-map-foot" class:bad={sharedTitleCount > 0}>
+                {#if sharedTitleCount > 0}
+                  <span class="rs-tri" aria-hidden="true">{@html warnTriIcon}</span>
+                  {sharedTitleCount} shared title{sharedTitleCount === 1 ? '' : 's'} across resumes
+                {:else}
+                  ✓ Every title belongs to exactly one resume
+                {/if}
+              </div>
+            </div>
+          {/if}
+
+          {#each resumes as r, i (r.id)}
+            {@const titleDup = isDuplicate(r, r.title)}
+            <div class="rs-card" style="--c: {RESUME_COLORS[i % RESUME_COLORS.length]}">
+              <div class="rs-head">
+                <span class="rs-page" aria-hidden="true">{i + 1}</span>
+                <div class="rs-head-main">
+                  <label class="rs-head-label" for="rs-title-{r.id}">Use this to apply as a…</label>
+                  <div class="rs-title-row">
+                    <input
+                      id="rs-title-{r.id}"
+                      class="rs-title"
+                      bind:value={r.title}
+                      placeholder="e.g. Frontend Developer"
+                      style="width: {Math.max(14, r.title.length + 2)}ch;"
+                    />
+                    {#if titleDup}
+                      <span class="rs-tri rs-tri-head" tabindex="0" aria-label="Duplicate title" aria-describedby="rs-tip-title-{r.id}" onkeydown={closeTip}>
+                        {@html warnTriIcon}
+                        <span class="rs-tip" role="tooltip" id="rs-tip-title-{r.id}">
+                          <b>Duplicate title</b>“{r.title}” is also under {dupNames(r, r.title)}. Keep it under one resume so the autofiller can choose the best match.
+                        </span>
+                      </span>
+                    {/if}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="rs-star"
+                  class:on={r.fb}
+                  aria-pressed={r.fb}
+                  aria-label="Fallback resume"
+                  aria-describedby="rs-tip-fb-{r.id}"
+                  onclick={() => setFallback(r.id)}
+                  onkeydown={closeTip}
+                >
+                  {@html starIcon}
+                  <span class="rs-tip rs-tip-fb" role="tooltip" id="rs-tip-fb-{r.id}">
+                    <b>{r.fb ? 'Fallback resume' : 'Make this the fallback'}</b>When no resume matches, this one will be used. You can configure to instead skip the posting and be notified via Settings.
+                  </span>
+                </button>
+                <button type="button" class="rs-x" onclick={() => removeResume(r.id)} aria-label="Remove resume" title="Remove resume">×</button>
+              </div>
+
+              <div class="rs-body">
+                <span class="rs-label">Similar titles this resume also loosely showcases</span>
+                <div class="rs-tags">
+                  {#each r.sim as t, ti}
+                    {@const dup = isDuplicate(r, t)}
+                    <span
+                      class="rs-tag"
+                      class:dup
+                      tabindex={dup ? 0 : undefined}
+                      aria-describedby={dup ? `rs-tip-${r.id}-${ti}` : undefined}
+                      onkeydown={dup ? closeTip : undefined}
+                    >
+                      {t}
+                      {#if dup}
+                        <span class="rs-tri" aria-hidden="true">{@html warnTriIcon}</span>
+                        <span class="rs-tip" role="tooltip" id="rs-tip-{r.id}-{ti}">
+                          <b>Duplicate title</b>“{t}” is also under {dupNames(r, t)}. Keep it under one resume so the autofiller can choose the best match.
+                        </span>
+                      {/if}
+                      <button type="button" class="rs-tag-x" onclick={() => removeResumeTag(r.id, ti)} aria-label="Remove {t}">×</button>
                     </span>
                   {/each}
+                </div>
+                <div class="rs-add-line">
                   <input
-                    class="resume-tag-input"
-                    placeholder="add a title tag..."
-                    onkeydown={(e) => {
-                      if (e.key === 'Enter' || e.key === ',') {
-                        e.preventDefault();
-                        addResumeTag(resume.id, e.target.value);
-                        e.target.value = '';
-                      }
-                    }}
+                    class="rs-tag-input"
+                    placeholder="+ add a title..."
+                    aria-label="Add similar title"
+                    onkeydown={(e) => handleResumeTagKeydown(r.id, e)}
+                    onpaste={(e) => handleResumeTagPaste(r.id, e)}
+                    onblur={(e) => handleResumeTagBlur(r.id, e)}
                   />
                 </div>
+
+                {#if r.fileName}
+                  <div class="rs-file">
+                    {@html fileTextIcon}
+                    <span class="rs-file-name">{r.fileName}</span>
+                    <span class="rs-file-ok">Uploaded</span>
+                    <label class="rs-link">Replace<input type="file" accept=".pdf,.doc,.docx" hidden onchange={(e) => onResumePick(r.id, e)} /></label>
+                    <button type="button" class="rs-link" onclick={() => clearResumeFile(r.id)}>Remove</button>
+                  </div>
+                {:else}
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <label
+                    class="rs-drop"
+                    class:over={dragOverId === r.id}
+                    ondragover={(e) => { e.preventDefault(); dragOverId = r.id; }}
+                    ondragleave={() => (dragOverId = null)}
+                    ondrop={(e) => onResumeDrop(r.id, e)}
+                  >
+                    {@html uploadIcon}
+                    Upload or drop resume <small>PDF, DOC or DOCX</small>
+                    <input type="file" accept=".pdf,.doc,.docx" hidden onchange={(e) => onResumePick(r.id, e)} />
+                  </label>
+                {/if}
               </div>
-            {:else}
-              <p class="note">No resumes uploaded yet.</p>
-            {/each}
-          </div>
+            </div>
+          {:else}
+            <p class="note">No resumes yet. Add one to get started.</p>
+          {/each}
 
-          <label class="add-resume-dropzone">
-            {@html uploadIcon}
-            <span>Add another resume</span>
-            <input type="file" accept=".pdf,.doc,.docx" hidden onchange={addResume} />
-          </label>
-
+          <button class="add-entry-btn" onclick={addResume}>+ {resumes.length === 0 ? 'Add a resume' : 'Add another resume'}</button>
         {:else if activeModal === 'fetch'}
           <!-- TODO: fetch modal content -->
 
@@ -1535,6 +1730,12 @@ async function performWipe(target) {
           </div>
         {/if}
       </div>
+    </div>
+  {/if}
+  {#if removedResume}
+    <div class="rs-toast" role="status">
+      <span>Removed “{removedResume.resume.title.trim() || 'Untitled'}”</span>
+      <button type="button" onclick={undoRemoveResume}>Undo</button>
     </div>
   {/if}
 
