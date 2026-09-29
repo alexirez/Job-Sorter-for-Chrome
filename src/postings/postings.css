@@ -115,6 +115,9 @@ body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   padding: 1.1rem 1.25rem 1rem;
 }
+.detail-modals { display: flex; flex-direction: column; }
+.detail-modals > * { flex-shrink: 0; }
+.detail-modals > .filter-popup-footer { margin-top: auto; }
 .detail-modals.modal-medium { width: 460px; height: 635px; max-height: min(600px, calc(100vh - 80px)); }
 .detail-modals.modal-large { width: 680px; height: 720px; max-height: min(720px, calc(100vh - 80px)); padding-left: 1.75rem; padding-right: 1.75rem; }
 .detail-modals.modal-large .filter-popup-header { margin-left: -0.5rem; margin-right: -0.5rem; }

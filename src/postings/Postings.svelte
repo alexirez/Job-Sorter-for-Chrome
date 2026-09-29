@@ -58,6 +58,7 @@
     settings: 'Settings',
     help: 'Help'
   };
+  const SAVEABLE_MODALS = ['personal', 'preferences', 'resumes'];
   const LARGE_MODALS = ['personal', 'preferences', 'resumes'];
 
   let activeModal = $state(null); // a key of MODAL_TITLES, or null when nothing is open
@@ -1704,6 +1705,13 @@ async function performWipe(target) {
             {#if wipeError}
               <p class="filter-hint wipe-error">Couldn't wipe: {wipeError}</p>
             {/if}
+          </div>
+        {/if}
+
+        {#if SAVEABLE_MODALS.includes(activeModal)}
+          <div class="filter-popup-footer">
+            <button class="chip" onclick={closeModal}>Close</button>
+            <button class="chip apply-btn" onclick={closeModal}>Save changes</button>
           </div>
         {/if}
       </div>
