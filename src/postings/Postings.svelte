@@ -1554,6 +1554,7 @@ async function performWipe(target) {
                       style="width: {Math.max(14, r.title.length + 2)}ch;"
                     />
                     {#if titleDup}
+                      <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_static_element_interactions -->
                       <span class="rs-tri rs-tri-head" tabindex="0" aria-label="Duplicate title" aria-describedby="rs-tip-title-{r.id}" onkeydown={closeTip}>
                         {@html warnTriIcon}
                         <span class="rs-tip" role="tooltip" id="rs-tip-title-{r.id}">
@@ -1586,6 +1587,7 @@ async function performWipe(target) {
                 <div class="rs-tags">
                   {#each r.sim as t, ti}
                     {@const dup = isDuplicate(r, t)}
+                    <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_static_element_interactions -->
                     <span
                       class="rs-tag"
                       class:dup
