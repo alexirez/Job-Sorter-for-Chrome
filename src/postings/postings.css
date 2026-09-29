@@ -2,10 +2,9 @@ html,
 body {
   margin: 0;
   background: #eef1f4;
-  /* No overflow rule here on purpose: the document itself is the only
-     scroll container. The fixed topbar/rails below are never scroll
-     containers themselves, so wheel input over them bubbles straight
-     to the document — no JS scroll redirect needed. */
+  /* No overflow rule here on purpose. The document should always scroll so the 
+    job list can be scrolled conveniently without having to put the cursor over 
+    the region. */
 }
 
 .postings-page {
