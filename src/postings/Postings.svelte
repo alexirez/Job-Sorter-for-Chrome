@@ -693,8 +693,6 @@
 
   let resumeError = $state('');
   let dragOverId = $state(null);
-  let removedResume = $state(null); // { resume, index } while the Undo toast is showing
-  let undoTimeout;
 
   function addResume() {
     resumes = [...resumes, { id: crypto.randomUUID(), title: '', sim: [], fileName: '', fb: resumes.length === 0 }];
@@ -708,23 +706,8 @@
   }
 
   function removeResume(id) {
-    const index = resumes.findIndex((r) => r.id === id);
-    if (index < 0) return;
-    removedResume = { resume: $state.snapshot(resumes[index]), index };
     resumes = resumes.filter((r) => r.id !== id);
     ensureFallback();
-    clearTimeout(undoTimeout);
-    undoTimeout = setTimeout(() => (removedResume = null), 6000);
-  }
-  function undoRemoveResume() {
-    if (!removedResume) return;
-    const { resume, index } = removedResume;
-    const next = [...resumes];
-    next.splice(index, 0, resume);
-    resumes = next;
-    if (resume.fb) setFallback(resume.id);
-    removedResume = null;
-    clearTimeout(undoTimeout);
   }
 
   // Accepts "A, B; C" or pasted lines. Skips titles that already exist on this resume.
@@ -1732,12 +1715,6 @@ async function performWipe(target) {
           </div>
         {/if}
       </div>
-    </div>
-  {/if}
-  {#if removedResume}
-    <div class="rs-toast" role="status">
-      <span>Removed “{removedResume.resume.title.trim() || 'Untitled'}”</span>
-      <button type="button" onclick={undoRemoveResume}>Undo</button>
     </div>
   {/if}
 
