@@ -779,7 +779,8 @@
   // ---- Removing postings (animated) ----
   // Ids currently being deleted. The collapse transition only plays for these, so a card
   // that merely moves between the top-3 / hand-off / handled groups doesn't animate out.
-  let removingIds = new Set();
+  let removingIds = $state(new Set());
+  const STALL__DELETIONS_MS = 400; // pause before the collapse starts
 
   function collapse(node, { id, duration = 260 }) {
     if (!removingIds.has(id)) return { duration: 0 };
@@ -795,8 +796,11 @@
   function removeJobs(ids) {
     const idSet = new Set(ids);
     removingIds = idSet;
-    jobs = jobs.filter((j) => !idSet.has(j.id));
-    setTimeout(() => (removingIds = new Set()), 500);
+      setTimeout(() => {
+      jobs = jobs.filter((j) => !idSet.has(j.id));
+      selectedIds = new Set([...selectedIds].filter((id) => !idSet.has(id)));
+    }, STALL_DELETIONS_MS);
+    setTimeout(() => (removingIds = new Set()), STALL_DELETIONS__MS + 500);
   }
 
   // Fixed topbar height is dynamic now (the filter bar can wrap), so the list offsets from it.
@@ -859,8 +863,7 @@
   }
 
   function deleteSelected() {
-    // chrome.runtime.sendMessage({ type: 'postings:deleteJobs', ids: [...selectedIds] })
-    removeJobs([...selectedIds]);
+    deleteJobs([...selectedIds]);
     selectedIds = new Set();
   }
 
@@ -1125,7 +1128,7 @@ async function performWipe(target) {
         </div>
         <div class="job-actions">
           <button class="job-act shortlist" class:on={job.status === 'shortlisted'} aria-pressed={job.status === 'shortlisted'} aria-label="Shortlist" title="Shortlist" onclick={act(() => toggleShortlist(job))}>{@html starIcon}</button>
-          <button class="job-act reject" aria-label="Reject" title="Reject" onclick={act(() => setStatus([job.id], 'rejected'))}>{@html closeIcon}</button>
+          <button class="job-act reject" aria-label="Delete" title="Delete" onclick={act(() => deleteJobs([job.id]))}>{@html closeIcon}</button>
           <button class="job-apply" onclick={act(() => openPosting(job))}>Apply ↗</button>
         </div>
         <span class="chevron" class:open={expandedIds.has(job.id)}>{@html chevronIcon}</span>
@@ -2092,7 +2095,7 @@ async function performWipe(target) {
 
       {#if splitView}
         {#each manualJobs as job, i (job.id)}
-          <div class="job-wrap" out:collapse={{ id: job.id }}>{@render jobCard(job, 'manual', i)}</div>
+          <div class="job-wrap" class:pending={removingIds.has(job.id)} out:collapse={{ id: job.id }}>{@render jobCard(job, 'manual', i)}</div>
         {/each}
 
         {#if handoffJobs.length > 0}
@@ -2106,7 +2109,7 @@ async function performWipe(target) {
             <button class="handoff-btn" onclick={() => openModal('apply')}>Begin Applying</button>
           </aside>
           {#each handoffJobs as job (job.id)}
-            <div class="job-wrap" out:collapse={{ id: job.id }}>{@render jobCard(job, 'handoff')}</div>
+            <div class="job-wrap" class:pending={removingIds.has(job.id)} out:collapse={{ id: job.id }}>{@render jobCard(job, 'handoff')}</div>
           {/each}
         {/if}
 
@@ -2116,7 +2119,7 @@ async function performWipe(target) {
       {/if}
 
       {#each handledJobs as job (job.id)}
-        <div class="job-wrap" out:collapse={{ id: job.id }}>{@render jobCard(job, 'plain')}</div>
+        <div class="job-wrap" class:pending={removingIds.has(job.id)} :collapse={{ id: job.id }}>{@render jobCard(job, 'plain')}</div>
       {/each}
 
       {#if filteredJobs.length === 0}
