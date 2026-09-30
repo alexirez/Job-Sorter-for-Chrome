@@ -26,16 +26,53 @@
     }
   });
 
-  const STATUS_TABS = [ 
-      { key: 'all', label: 'All' }, { key: 'new', label: 'New' }, { key: 'shortlisted', label: 'Shortlisted' }, 
-      { key: 'applied', label: 'Applied' }, { key: 'rejected', label: 'Rejected' }
+  // Inline icons for anything not in ../ui/assets/icons yet.
+  const mkSvg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const sparkleIcon = mkSvg('<path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/>');
+  const planeIcon = mkSvg('<path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/>');
+  const rejectIcon = mkSvg('<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>');
+  const closeIcon = mkSvg('<path d="M6 6l12 12M18 6L6 18"/>');
+  const refreshIcon = mkSvg('<path d="M4 12a8 8 0 0113.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 01-13.7 5.6L4 15M4 20v-5h5"/>');
+
+  const STATUS_TILES = [
+    { key: 'new', label: 'New', icon: sparkleIcon, color: 'var(--new)' },
+    { key: 'shortlisted', label: 'Shortlisted', icon: starIcon, color: 'var(--shortlist)' },
+    { key: 'applied', label: 'Applied', icon: planeIcon, color: 'var(--applied)' },
+    { key: 'rejected', label: 'Rejected', icon: rejectIcon, color: 'var(--rejected)' }
   ];
+  // There's no "All" tab anymore: clicking the active tile again goes back to all.
+  function selectTile(key) { activeStatus = activeStatus === key ? 'all' : key; }
+
+  const QUICK_FILTERS = [
+    { key: 'remoteOnly', label: 'Remote only' },
+    { key: 'salaryListed', label: 'Salary listed' },
+    { key: 'postedThisWeek', label: 'Posted this week' }
+  ];
+
+  // Tile sparklines: postings per day (by postedAt) over the last 6 days, as bar-height %.
+  const SPARK_DAYS = 6;
+  let sparkBars = $derived.by(() => {
+    const out = {};
+    const now = Date.now();
+    for (const t of STATUS_TILES) {
+      const buckets = new Array(SPARK_DAYS).fill(0);
+      for (const j of jobs) {
+        if (j.status !== t.key || !j.postedAt) continue;
+        const age = Math.floor((now - new Date(j.postedAt).getTime()) / DAY_MS);
+        if (age >= 0 && age < SPARK_DAYS) buckets[SPARK_DAYS - 1 - age]++;
+      }
+      const max = Math.max(1, ...buckets);
+      out[t.key] = buckets.map((n) => Math.max(12, Math.round((n / max) * 100)));
+    }
+    return out;
+  });
 
   function formatRaw(raw) {
     try { return JSON.stringify(JSON.parse(raw), null, 2); } catch { return raw ?? 'No raw data stored.'; }
   }
 
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+  const DAY_MS = 24 * 60 * 60 * 1000;
   const HOURS_PER_YEAR = 2080;
   function stampFor(job) {
     if (job.status === 'new') {
@@ -315,6 +352,10 @@
   function applyFilters() {
     appliedFilterState = $state.snapshot(draftFilterState);
     closeModal();
+    runFilterPass();
+  }
+
+  function runFilterPass() {
     loadingState = 'filtering';
     // TODO: recompute filteredJobs / message background using appliedFilterState
     // (postedWithin, salary/hourly range, workType, include/exclude keywords, AI filter)
@@ -325,6 +366,74 @@
   function clearDraftFilters() {
     draftFilterState = defaultFilterState();
   }
+
+  const DEFAULT_FILTERS = defaultFilterState();
+
+  // Mutate the applied filters directly (used by the chip ×), then re-run the pass.
+  function editApplied(fn) { fn(appliedFilterState); runFilterPass(); }
+
+  function clearAllFilters() {
+    filters = { remoteOnly: false, salaryListed: false, postedThisWeek: false };
+    appliedFilterState = defaultFilterState();
+    runFilterPass();
+  }
+
+  // One chip per active filter. The bar wraps onto a second line as this grows.
+  let activeChips = $derived.by(() => {
+    const s = appliedFilterState;
+    const d = DEFAULT_FILTERS;
+    const chips = [];
+
+    for (const q of QUICK_FILTERS) {
+      if (filters[q.key]) chips.push({ id: q.key, label: q.label, tone: 'blue', remove: () => toggleFilter(q.key) });
+    }
+    if (s.postedWithin !== 'any') {
+      chips.push({
+        id: 'posted', tone: 'blue',
+        label: `Posted: ${POSTED_WITHIN.find((o) => o.key === s.postedWithin)?.label}`,
+        remove: () => editApplied((a) => (a.postedWithin = 'any'))
+      });
+    }
+    const compChanged = s.compType === 'salary'
+      ? s.salaryMin !== d.salaryMin || s.salaryMax !== d.salaryMax
+      : s.hourlyMin !== d.hourlyMin || s.hourlyMax !== d.hourlyMax;
+    if (compChanged) {
+      chips.push({
+        id: 'comp', tone: 'amber',
+        label: s.compType === 'salary'
+          ? `$${formatCompact(s.salaryMin)}–${formatCompact(s.salaryMax)}`
+          : `$${Math.round(s.hourlyMin)}–${Math.round(s.hourlyMax)}/hr`,
+        remove: () => editApplied((a) => {
+          a.salaryMin = d.salaryMin; a.salaryMax = d.salaryMax;
+          a.hourlyMin = d.hourlyMin; a.hourlyMax = d.hourlyMax;
+        })
+      });
+    }
+    const wt = WORK_TYPES.filter((w) => s.workType[w.key]);
+    if (wt.length < WORK_TYPES.length) {
+      chips.push({
+        id: 'work', tone: 'blue',
+        label: wt.length ? wt.map((w) => w.label).join(' + ') : 'No work types',
+        remove: () => editApplied((a) => (a.workType = { ...d.workType }))
+      });
+    }
+    s.includeKeywords.forEach((kw, i) => chips.push({
+      id: `inc-${i}-${kw}`, tone: 'green', label: `+ ${kw}`,
+      remove: () => editApplied((a) => a.includeKeywords.splice(i, 1))
+    }));
+    s.excludeKeywords.forEach((kw, i) => chips.push({
+      id: `exc-${i}-${kw}`, tone: 'red', label: `− ${kw}`,
+      remove: () => editApplied((a) => a.excludeKeywords.splice(i, 1))
+    }));
+    if (s.aiFilterEnabled && s.aiFilterPrompt.trim()) {
+      const p = s.aiFilterPrompt.trim();
+      chips.push({
+        id: 'ai', tone: 'amber', label: `AI: ${p.length > 28 ? p.slice(0, 28) + '…' : p}`,
+        remove: () => editApplied((a) => (a.aiFilterEnabled = false))
+      });
+    }
+    return chips;
+  });
 
   // Multi-select
   let selectedIds = $state(new Set());
@@ -573,14 +682,54 @@
     return jobs.filter((j) => j.status === key).length;
   }
 
-  let filteredJobs = $derived(
-    jobs.filter((j) => {
-      if (activeStatus !== 'all' && j.status !== activeStatus) return false;
-      if (filters.remoteOnly && j.remote !== true) return false;
-      if (filters.salaryListed && j.salaryMin == null && j.salaryMax == null) return false;
-      return true;
-    })
-  );
+  let searchQuery = $state('');
+
+  const SORT_OPTIONS = [
+    { key: 'best', label: 'Best match' },
+    { key: 'ai', label: 'Let AI order them' },
+    { key: 'pay', label: 'Highest pay' },
+    { key: 'newest', label: 'Newest first' }
+  ];
+  let sortBy = $state('best');
+  let sortOpen = $state(false);
+  let sortNode = $state(null);
+
+  const timeOf = (j) => (j.postedAt ? new Date(j.postedAt).getTime() || 0 : 0);
+  const payOf = (j) => j.salaryMax ?? j.salaryMin ?? -1;
+  const SORTERS = {
+    // matchScore (0–100) is optional until the scoring pass exists; unscored jobs fall back to newest.
+    best: (a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1) || timeOf(b) - timeOf(a),
+    // TODO: ask the background for an AI ranking and cache it. Until then this matches 'best'.
+    ai: (a, b) => SORTERS.best(a, b),
+    pay: (a, b) => payOf(b) - payOf(a) || timeOf(b) - timeOf(a),
+    newest: (a, b) => timeOf(b) - timeOf(a)
+  };
+  function pickSort(key) { sortBy = key; sortOpen = false; }
+  function onWindowClick(e) { if (sortOpen && sortNode && !sortNode.contains(e.target)) sortOpen = false; }
+
+  let filteredJobs = $derived.by(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const weekAgo = Date.now() - 7 * DAY_MS;
+    return jobs
+      .filter((j) => {
+        if (activeStatus !== 'all' && j.status !== activeStatus) return false;
+        if (filters.remoteOnly && j.remote !== true) return false;
+        if (filters.salaryListed && j.salaryMin == null && j.salaryMax == null) return false;
+        if (filters.postedThisWeek && timeOf(j) < weekAgo) return false;
+        if (q && !`${j.title} ${j.company} ${j.location}`.toLowerCase().includes(q)) return false;
+        return true;
+      })
+      .sort(SORTERS[sortBy]);
+  });
+
+  // "You apply" (top N) → automation band → everything else.
+  const OPEN_STATUSES = ['new', 'shortlisted'];
+  const MANUAL_COUNT = 3;
+  let splitView = $derived(activeStatus === 'all' || OPEN_STATUSES.includes(activeStatus));
+  let openJobs = $derived(splitView ? filteredJobs.filter((j) => OPEN_STATUSES.includes(j.status)) : []);
+  let manualJobs = $derived(openJobs.slice(0, MANUAL_COUNT));
+  let handoffJobs = $derived(openJobs.slice(MANUAL_COUNT));
+  let handledJobs = $derived(splitView ? filteredJobs.filter((j) => !OPEN_STATUSES.includes(j.status)) : filteredJobs);
 
   function toggleExpanded(id) {
     const next = new Set(expandedIds);
@@ -597,6 +746,43 @@
   function toggleFilter(key) {
     filters = { ...filters, [key]: !filters[key] };
   }
+
+  // ---- Pay bar: job range drawn against your applied pay range (annualized) ----
+  let payDomain = $derived.by(() => {
+    const s = appliedFilterState;
+    const lo = s.compType === 'hourly' ? hourlyToSalary(s.hourlyMin) : s.salaryMin;
+    const hi = s.compType === 'hourly' ? hourlyToSalary(s.hourlyMax) : s.salaryMax;
+    return { lo, hi: Math.max(hi, lo + 1) };
+  });
+  let idealAnnual = $derived(
+    appliedFilterState.compType === 'hourly' ? hourlyToSalary(appliedFilterState.idealPay) : appliedFilterState.idealPay
+  );
+  function payPct(v) {
+    const { lo, hi } = payDomain;
+    return Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100));
+  }
+
+  // ---- Card actions ----
+  const act = (fn) => (e) => { e.stopPropagation(); fn(); };
+  function setStatus(ids, status) {
+    const idSet = new Set(ids);
+    jobs = jobs.map((j) => (idSet.has(j.id) ? { ...j, status } : j));
+    // TODO: chrome.runtime.sendMessage({ type: 'postings:setStatus', ids: [...idSet], status })
+  }
+  function toggleShortlist(job) { setStatus([job.id], job.status === 'shortlisted' ? 'new' : 'shortlisted'); }
+  function openPosting(job) {
+    if (job.url) window.open(job.url, '_blank', 'noopener'); // adjust to your field name for the Adzuna redirect URL
+    // TODO: track it (e.g. "Did you apply?" prompt, or mark Applied when the tab closes).
+  }
+
+  // Fixed topbar height is dynamic now (the filter bar can wrap), so the list offsets from it.
+  let topbarH = $state(0);
+
+  // ---- Automation run (drives the Begin Applying button + hover popup) ----
+  // null when idle. TODO: have the background push this while a run is active.
+  let run = $state(null); // { done, total, company, title, step, unresolved }
+  function pauseRun() {}  // TODO
+  function stopRun() {}   // TODO
 
   function formatCompact(value) {
     const rounded = Math.round(value);
@@ -851,16 +1037,116 @@ async function performWipe(target) {
     >{prefLabel(key)}</span>
   {/snippet}
 
-  <div class="postings-page" class:font-large={prefs.size === 'large'} style="--sidebar-w: {sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px;">  <div class="fixed-topbar">
-    <div class="segmented-control">
-      {#each STATUS_TABS as tab}
-        <button class="segment" class:active={activeStatus === tab.key} onclick={() => (activeStatus = tab.key)}>
-          {tab.label} <span class="segment-count">{statusCount(tab.key)}</span>
+  {#snippet jobCard(job, variant, rank)}
+    {@const stamp = stampFor(job)}
+    {@const salary = formatSalary(job)}
+    <div
+      class="job-card {variant}"
+      class:top={rank === 0}
+      class:closed={job.status === 'rejected' || job.status === 'filtered_out'}
+      class:selected={selectedIds.has(job.id)}
+    >
+      <div
+        class="job-row"
+        role="button"
+        tabindex="0"
+        aria-expanded={expandedIds.has(job.id)}
+        onclick={() => toggleExpanded(job.id)}
+        onkeydown={(e) => {
+          if (e.target !== e.currentTarget) return; // don't hijack keys from the checkbox/buttons inside
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(job.id); }
+        }}
+      >
+        <input class="job-checkbox" type="checkbox" checked={selectedIds.has(job.id)} onclick={(e) => toggleSelect(job.id, e)} aria-label="Select posting" />
+        {#if variant === 'manual'}
+          <span class="job-rank" style="--rk: {CARD_COLORS[rank % CARD_COLORS.length]}" aria-label="Rank {rank + 1}">{rank + 1}</span>
+        {/if}
+        {#if job.matchScore != null}
+          <div class="match-ring" style="--p: {job.matchScore}; --rc: {job.matchScore >= 80 ? 'var(--shortlist)' : 'var(--bonus)'}" title="Match score">
+            <span>{Math.round(job.matchScore)}</span>
+          </div>
+        {/if}
+        <div class="job-main">
+          <div class="job-title-row">
+            <p class="job-title">{job.title}</p>
+            {#if stamp}
+              <span class="job-label job-label-{job.status}">{stamp.label}</span>
+            {/if}
+          </div>
+          <p class="job-meta">{job.company} · {job.location} · posted {job.postedAt}</p>
+        </div>
+        <div class="job-salary-col">
+          <div class="job-salary">
+            {#if salary}
+              <span class="salary-flag" title={job.salaryIsPredicted ? 'Approximated' : 'Explicit'}>{job.salaryIsPredicted ? '~' : '✓'}</span>
+              <span class="salary-dollar">$</span>
+              <span class="salary-amount">{salary}</span>
+            {:else}
+              <span class="salary-flag" title="Approximated">~</span>
+              <span class="salary-amount muted">not listed</span>
+            {/if}
+          </div>
+          {#if salary}
+            {@const lo = payPct(job.salaryMin ?? job.salaryMax)}
+            {@const hi = payPct(job.salaryMax ?? job.salaryMin)}
+            <div class="pay-bar" aria-hidden="true">
+              <i class="pay-bar-fill" class:predicted={job.salaryIsPredicted} style="left: {lo}%; right: {100 - hi}%;"></i>
+              {#if appliedFilterState.idealPayEnabled}
+                <em class="pay-bar-ideal" style="left: {payPct(idealAnnual)}%;"></em>
+              {/if}
+            </div>
+          {/if}
+        </div>
+        <div class="job-actions">
+          <button class="job-act shortlist" class:on={job.status === 'shortlisted'} aria-pressed={job.status === 'shortlisted'} aria-label="Shortlist" title="Shortlist" onclick={act(() => toggleShortlist(job))}>{@html starIcon}</button>
+          <button class="job-act reject" aria-label="Reject" title="Reject" onclick={act(() => setStatus([job.id], 'rejected'))}>{@html closeIcon}</button>
+          <button class="job-apply" onclick={act(() => openPosting(job))}>Apply ↗</button>
+        </div>
+        <span class="chevron" class:open={expandedIds.has(job.id)}>{@html chevronIcon}</span>
+      </div>
+
+      {#if expandedIds.has(job.id)}
+        <div class="job-detail">
+          <button class="icon-btn raw-btn" onclick={() => toggleRaw(job.id)} aria-label="View raw data" title="View raw data">
+            {@html questionMarkIcon}
+          </button>
+          <div class="job-detail-body">
+            <p class="job-detail-line">Employment type: {job.employmentType ?? 'unknown'} · Source: {job.source}</p>
+            {#if job.description}
+              <p class="job-description">{job.description}</p>
+            {:else}
+              <p class="job-description muted">No description provided.</p>
+            {/if}
+            {#if rawOpenIds.has(job.id)}
+              <pre class="raw-json">{formatRaw(job.raw)}</pre>
+            {/if}
+          </div>
+        </div>
+      {/if}
+    </div>
+  {/snippet}
+
+  <svelte:window onclick={onWindowClick} onkeydown={(e) => { if (e.key === 'Escape') sortOpen = false; }} />
+
+  <div class="postings-page" class:font-large={prefs.size === 'large'} style="--sidebar-w: {sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px; --topbar-h: {topbarH}px;">
+  <div class="fixed-topbar" bind:clientHeight={topbarH}>
+    <div class="topbar-search">
+      <input class="search-input" type="search" bind:value={searchQuery} placeholder="Search title, company, location…" aria-label="Search postings" />
+    </div>
+
+    <div class="status-tiles">
+      {#each STATUS_TILES as tile (tile.key)}
+        <button class="status-tile" class:active={activeStatus === tile.key} style="--t: {tile.color}" aria-pressed={activeStatus === tile.key} onclick={() => selectTile(tile.key)}>
+          <span class="tile-head"><span class="tile-icon">{@html tile.icon}</span>{tile.label}</span>
+          <b class="tile-count">{statusCount(tile.key)}</b>
+          <span class="tile-spark" aria-hidden="true">
+            {#each sparkBars[tile.key] as h}<i style="height: {h}%"></i>{/each}
+          </span>
         </button>
       {/each}
     </div>
 
-    <div class="filters-row">
+    <div class="filters-bar">
       <div class="select-all-wrap">
         <input
           type="checkbox"
@@ -886,18 +1172,22 @@ async function performWipe(target) {
           </button>
         </div>
       {:else}
-        <button
-          class="icon-btn filter-btn"
-          class:active={activeModal === 'filters'}
-          onclick={openFilterMenu}
-          aria-label="Custom filter"
-          title="Custom filter"
-        >
-          {@html filterIcon}
+        <button class="filters-btn" class:active={activeModal === 'filters'} onclick={openFilterMenu}>
+          {@html filterIcon}Filters
+          {#if activeChips.length > 0}<span class="filters-count">{activeChips.length}</span>{/if}
         </button>
-        <button class="chip" class:active={filters.remoteOnly} onclick={() => toggleFilter('remoteOnly')}>Remote only</button>
-        <button class="chip" class:active={filters.salaryListed} onclick={() => toggleFilter('salaryListed')}>Salary listed</button>
-        <button class="chip" class:active={filters.postedThisWeek} onclick={() => toggleFilter('postedThisWeek')}>Posted this week</button>
+        {#each activeChips as chip (chip.id)}
+          <span class="fchip fchip-{chip.tone}">
+            {chip.label}
+            <button class="fchip-x" onclick={chip.remove} aria-label="Remove filter: {chip.label}">×</button>
+          </span>
+        {/each}
+        {#each QUICK_FILTERS.filter((q) => !filters[q.key]) as q (q.key)}
+          <button class="fchip fchip-ghost" onclick={() => toggleFilter(q.key)}>+ {q.label}</button>
+        {/each}
+        {#if activeChips.length > 1}
+          <button class="fchip-clear" onclick={clearAllFilters}>Clear all</button>
+        {/if}
       {/if}
     </div>
   </div>
@@ -912,15 +1202,42 @@ async function performWipe(target) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0113.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 01-13.7 5.6L4 15M4 20v-5h5" /></svg>
       Fetch Jobs
     </button>
-    <button
-      class="begin-applying-btn"
-      onclick={() => openModal('apply')}
-      aria-label="Begin Applying"
-      title="Begin Applying"
-    >
-      {@html applyIcon}
-      Begin Applying
-    </button>
+    <div class="apply-wrap">
+      <button
+        class="begin-applying-btn"
+        class:running={run}
+        onclick={() => openModal('apply')}
+        aria-label={run ? `Applying, ${run.done} of ${run.total} done` : 'Begin Applying'}
+        title={run ? undefined : 'Begin Applying'}
+      >
+        {#if run}
+          <span class="spin-icon">{@html refreshIcon}</span>Applying… {run.done}/{run.total}
+        {:else}
+          {@html applyIcon}Begin Applying
+        {/if}
+      </button>
+      {#if run}
+        <div class="run-pop" role="status">
+          <div class="run-pop-card">
+            <div class="run-pop-head"><span class="run-live"></span><b>Applying · running</b></div>
+            <div>
+              <p class="run-pop-company">{run.company}</p>
+              <p class="run-pop-title">{run.title}</p>
+            </div>
+            <div class="run-bar"><i style="width: {(run.done / run.total) * 100}%"></i></div>
+            <div class="run-row">
+              <span>{run.done} of {run.total} postings</span>
+              {#if run.unresolved}<span class="run-warn">{run.unresolved} unresolved</span>{/if}
+            </div>
+            <div class="run-row"><span>Now</span><b>{run.step}</b></div>
+            <div class="run-btns">
+              <button class="run-btn" onclick={pauseRun}>Pause</button>
+              <button class="run-btn stop" onclick={stopRun}>Stop</button>
+            </div>
+          </div>
+        </div>
+      {/if}
+    </div>
   </div>
   {#if loadingState === 'filtering'}
     <div class="applying-filters-wrap">
@@ -954,18 +1271,18 @@ async function performWipe(target) {
           </div>
         </div>
         <button class="sidebar-btn" onclick={() => openModal('personal')}>
-          {@html userIcon}
+          <span class="sb-ic" style="--ic: var(--new)">{@html userIcon}</span>
           <span class="sidebar-label">Edit personal info</span>
         </button>
         <button class="sidebar-btn" onclick={() => openModal('preferences')}>
-          {@html preferencesIcon}
+          <span class="sb-ic" style="--ic: var(--shortlist)">{@html preferencesIcon}</span>
           <span class="sidebar-label">Edit preferences</span>
         </button>
       </div>
 
       <div class="sidebar-section">
         <button class="sidebar-btn sidebar-btn-outline" onclick={() => openModal('resumes')}>
-          {@html uploadIcon}
+          <span class="sb-ic" style="--ic: var(--applied)">{@html uploadIcon}</span>
           <span class="sidebar-label" style="flex:1;">Upload resume</span>
           {#if resumes.length > 0}
             <span class="sidebar-count sidebar-label">{resumes.length}</span>
@@ -977,15 +1294,15 @@ async function performWipe(target) {
 
       <div class="sidebar-section sidebar-section-plain">
         <button class="sidebar-btn" title="View archived">
-          {@html archiveIcon}
+          <span class="sb-ic" style="--ic: var(--bonus)">{@html archiveIcon}</span>
           <span class="sidebar-label">View archived</span>
         </button>
         <button class="sidebar-btn" onclick={() => openModal('settings')}>
-          {@html settingsIcon}
+          <span class="sb-ic" style="--ic: var(--slate)">{@html settingsIcon}</span>
           <span class="sidebar-label">Settings</span>
         </button>
         <button class="sidebar-btn" onclick={() => openModal('help')}>
-          {@html questionMarkIcon}
+          <span class="sb-ic" style="--ic: var(--violet)">{@html questionMarkIcon}</span>
           <span class="sidebar-label">Help</span>
         </button>
       </div>
@@ -1724,60 +2041,56 @@ async function performWipe(target) {
     {:else if loadError}
       <p class="note">Couldn't load postings: {loadError}</p>
     {:else}
-      {#each filteredJobs as job (job.id)}
-        {@const stamp = stampFor(job)}
-        {@const salary = formatSalary(job)}
-        <div class="job-card" class:closed={job.status === 'rejected' || job.status === 'filtered_out'} class:selected={selectedIds.has(job.id)}>
-          <div
-            class="job-row"
-            role="button"
-            tabindex="0"
-            aria-expanded={expandedIds.has(job.id)}
-            onclick={() => toggleExpanded(job.id)}
-            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(job.id); } }}
-          >
-            <input class="job-checkbox" type="checkbox" checked={selectedIds.has(job.id)} onclick={(e) => toggleSelect(job.id, e)} aria-label="Select posting" />
-            <div class="job-main">
-              <div class="job-title-row">
-                <p class="job-title">{job.title}</p>
-                {#if stamp}
-                  <span class="job-label job-label-{job.status}">{stamp.label}</span>
-                {/if}
-              </div>
-              <p class="job-meta">{job.company} · {job.location} · posted {job.postedAt}</p>
-            </div>
-            <div class="job-salary">
-              {#if salary}
-                <span class="salary-flag" title={job.salaryIsPredicted ? 'Approximated' : 'Explicit'}>{job.salaryIsPredicted ? '~' : '✓'}</span>
-                <span class="salary-dollar">$</span>
-                <span class="salary-amount">{salary}</span>
-              {:else}
-                <span class="salary-flag" title="Approximated">~</span>
-                <span class="salary-amount muted">not listed</span>
-              {/if}
-            </div>
-            <span class="chevron" class:open={expandedIds.has(job.id)}>{@html chevronIcon}</span>
-          </div>
-
-          {#if expandedIds.has(job.id)}
-            <div class="job-detail">
-              <button class="icon-btn raw-btn" onclick={() => toggleRaw(job.id)} aria-label="View raw data" title="View raw data">
-                {@html questionMarkIcon}
-              </button>
-              <div class="job-detail-body">
-                <p class="job-detail-line">Employment type: {job.employmentType ?? 'unknown'} · Source: {job.source}</p>
-                {#if job.description}
-                  <p class="job-description">{job.description}</p>
-                {:else}
-                  <p class="job-description muted">No description provided.</p>
-                {/if}
-                {#if rawOpenIds.has(job.id)}
-                  <pre class="raw-json">{formatRaw(job.raw)}</pre>
-                {/if}
-              </div>
+      <header class="list-head">
+        {#if splitView && manualJobs.length > 0}
+          <b>1 · You apply</b>
+          <span class="list-head-note">Top {manualJobs.length} by {SORT_OPTIONS.find((o) => o.key === sortBy).label.toLowerCase()}. Apply ↗ opens the posting.</span>
+        {:else}
+          <span>{filteredJobs.length} posting{filteredJobs.length === 1 ? '' : 's'}</span>
+        {/if}
+        <div class="sort" bind:this={sortNode}>
+          <button class="sort-btn" aria-haspopup="listbox" aria-expanded={sortOpen} onclick={() => (sortOpen = !sortOpen)}>
+            <span class="sort-label">Sort by:</span>
+            {SORT_OPTIONS.find((o) => o.key === sortBy).label}
+            <span aria-hidden="true">▾</span>
+          </button>
+          {#if sortOpen}
+            <div class="sort-menu" role="listbox" aria-label="Sort by">
+              {#each SORT_OPTIONS as o (o.key)}
+                <button class="sort-opt" class:on={sortBy === o.key} role="option" aria-selected={sortBy === o.key} onclick={() => pickSort(o.key)}>{o.label}</button>
+              {/each}
             </div>
           {/if}
         </div>
+      </header>
+
+      {#if splitView}
+        {#each manualJobs as job, i (job.id)}
+          {@render jobCard(job, 'manual', i)}
+        {/each}
+
+        {#if handoffJobs.length > 0}
+          <aside class="handoff-band">
+            <span class="handoff-icon" aria-hidden="true">{@html refreshIcon}</span>
+            <div class="handoff-text">
+              <p class="handoff-title">2 · Hand off the other {handoffJobs.length} to automation</p>
+              <p class="handoff-sub">Everything below this line uses your preferences and resume tags. Unresolved fields get flagged.</p>
+            </div>
+            <!-- TODO: beginApplying should receive handoffJobs ids -->
+            <button class="handoff-btn" onclick={() => openModal('apply')}>Begin Applying</button>
+          </aside>
+          {#each handoffJobs as job (job.id)}
+            {@render jobCard(job, 'handoff')}
+          {/each}
+        {/if}
+
+        {#if handledJobs.length > 0}
+          <p class="list-divider">Already handled</p>
+        {/if}
+      {/if}
+
+      {#each handledJobs as job (job.id)}
+        {@render jobCard(job, 'plain')}
       {/each}
 
       {#if filteredJobs.length === 0}
