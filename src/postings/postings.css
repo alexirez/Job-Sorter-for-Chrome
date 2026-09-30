@@ -324,8 +324,7 @@ body {
   z-index: 1;
 }
 
-.job-card { --card-bg: #fff; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card-bg); box-shadow: 0 6px 16px rgba(37, 99, 168, 0.1); }
-.job-card:nth-of-type(even) { --card-bg: #f7f8f9; }
+.job-card { --card-bg: #fff; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--card-bg); box-shadow: 0 1px 3px rgba(31, 41, 51, 0.06); }
 .job-card.closed { opacity: 0.55; }
 .job-card.selected { outline: 2px solid var(--new); outline-offset: -1px; }
 
@@ -814,10 +813,12 @@ body {
 .fchip-green { --fc: var(--shortlist); }
 .fchip-red { --fc: var(--rejected); }
 .fchip-amber { --fc: var(--bonus); }
+.fchip-teal { --fc: var(--applied); }
+.fchip-violet { --fc: var(--violet); }
 .fchip-x { border: 0; background: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 4px; }
 .fchip-x:hover { opacity: 1; }
-.fchip-ghost { padding-right: 11px; border: 1px dashed var(--border-strong); background: transparent; color: var(--ink-muted); font-weight: 500; cursor: pointer; }
-.fchip-ghost:hover { color: var(--ink); border-color: var(--ink-muted); }
+.fchip-ghost { padding-right: 11px; border: 1px dashed color-mix(in srgb, var(--fc) 55%, white); background: transparent; color: var(--fc); font-weight: 500; cursor: pointer; }
+.fchip-ghost:hover { background: color-mix(in srgb, var(--fc) 10%, white); border-color: var(--fc); }
 .fchip-clear { margin-left: auto; border: 0; background: none; font: inherit; font-size: 12px; font-weight: 700; color: var(--new); cursor: pointer; }
 
 /* Begin Applying: running state + hover popup */

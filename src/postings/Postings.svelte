@@ -44,9 +44,9 @@
   function selectTile(key) { activeStatus = activeStatus === key ? 'all' : key; }
 
   const QUICK_FILTERS = [
-    { key: 'remoteOnly', label: 'Remote only' },
-    { key: 'salaryListed', label: 'Salary listed' },
-    { key: 'postedThisWeek', label: 'Posted this week' }
+    { key: 'remoteOnly', label: 'Remote only', tone: 'teal' },
+    { key: 'salaryListed', label: 'Salary listed', tone: 'amber' },
+    { key: 'postedThisWeek', label: 'Posted this week', tone: 'blue' }
   ];
 
   // Tile sparklines: postings per day (by postedAt) over the last 6 days, as bar-height %.
@@ -385,7 +385,7 @@
     const chips = [];
 
     for (const q of QUICK_FILTERS) {
-      if (filters[q.key]) chips.push({ id: q.key, label: q.label, tone: 'blue', remove: () => toggleFilter(q.key) });
+      if (filters[q.key]) chips.push({ id: q.key, label: q.label, tone: q.tone, remove: () => toggleFilter(q.key) });
     }
     if (s.postedWithin !== 'any') {
       chips.push({
@@ -412,7 +412,7 @@
     const wt = WORK_TYPES.filter((w) => s.workType[w.key]);
     if (wt.length < WORK_TYPES.length) {
       chips.push({
-        id: 'work', tone: 'blue',
+        id: 'work', tone: 'teal',
         label: wt.length ? wt.map((w) => w.label).join(' + ') : 'No work types',
         remove: () => editApplied((a) => (a.workType = { ...d.workType }))
       });
@@ -428,7 +428,7 @@
     if (s.aiFilterEnabled && s.aiFilterPrompt.trim()) {
       const p = s.aiFilterPrompt.trim();
       chips.push({
-        id: 'ai', tone: 'amber', label: `AI: ${p.length > 28 ? p.slice(0, 28) + '…' : p}`,
+        id: 'ai', tone: 'violet', label: `AI: ${p.length > 28 ? p.slice(0, 28) + '…' : p}`,
         remove: () => editApplied((a) => (a.aiFilterEnabled = false))
       });
     }
@@ -1183,7 +1183,7 @@ async function performWipe(target) {
           </span>
         {/each}
         {#each QUICK_FILTERS.filter((q) => !filters[q.key]) as q (q.key)}
-          <button class="fchip fchip-ghost" onclick={() => toggleFilter(q.key)}>+ {q.label}</button>
+          <button class="fchip fchip-ghost fchip-{q.tone}" onclick={() => toggleFilter(q.key)}>+ {q.label}</button>
         {/each}
         {#if activeChips.length > 1}
           <button class="fchip-clear" onclick={clearAllFilters}>Clear all</button>
