@@ -1829,7 +1829,7 @@ async function performWipe(target) {
           <div class="pf">
             {@render prefHeader('App Customization', 'var(--new)', slidersIcon)}
             <p class="pf-sentence">Use the {@render prefPill('theme')} Theme with a {@render prefPill('size')} font.</p>
-            <p class="pf-sentence">Show pay as {@render prefPill('comp')}.</p>
+            <p class="pf-sentence">Show pay in {@render prefPill('comp')} format.</p>
 
             {@render prefHeader('Autofiller Preferences', 'var(--shortlist)', boltIcon)}
             <p class="pf-pick">Pick an automation style below</p>
