@@ -2083,9 +2083,9 @@ async function performWipe(target) {
 
   <div class="content-flow" bind:clientHeight={contentH}>
     {#if loadingState === 'loading'}
-      <p class="note">Loading postings…</p>
+      <p class="note note-empty">Loading postings…</p>
     {:else if loadError}
-      <p class="note">Couldn't load postings: {loadError}</p>
+      <p class="note note-empty" >Couldn't load postings: {loadError}</p>
     {:else}
       <header class="list-head">
         {#if splitView && manualJobs.length > 0}
@@ -2140,7 +2140,7 @@ async function performWipe(target) {
       {/each}
 
       {#if filteredJobs.length === 0}
-        <p class="note">No postings match the current filters.</p>
+        <p class="note note-empty">No postings match the current filters.</p>
       {/if}
       {#if filteredJobs.length > 0}
         <p class="end-of-list" class:hidden={!showEnd} aria-hidden={!showEnd}>You've reached the end.</p>
