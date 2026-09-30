@@ -15,6 +15,9 @@
 
   let selectAllNode;
 
+  let removingIds = $state(new Set()); // state for animated deletion
+  const STALL__DELETIONS_MS = 400;
+
   onMount(async () => {
     try {
       const response = await chrome.runtime.sendMessage({ type: 'postings:getAllJobs' });
@@ -779,8 +782,6 @@
   // ---- Removing postings (animated) ----
   // Ids currently being deleted. The collapse transition only plays for these, so a card
   // that merely moves between the top-3 / hand-off / handled groups doesn't animate out.
-  let removingIds = $state(new Set());
-  const STALL__DELETIONS_MS = 400; // pause before the collapse starts
 
   function collapse(node, { id, duration = 260 }) {
     if (!removingIds.has(id)) return { duration: 0 };
@@ -795,12 +796,19 @@
 
   function removeJobs(ids) {
     const idSet = new Set(ids);
-    removingIds = idSet;
+    removingIds = new Set([...removingIds, ...idSet]);
       setTimeout(() => {
       jobs = jobs.filter((j) => !idSet.has(j.id));
       selectedIds = new Set([...selectedIds].filter((id) => !idSet.has(id)));
     }, STALL_DELETIONS_MS);
-    setTimeout(() => (removingIds = new Set()), STALL_DELETIONS__MS + 500);
+    setTimeout(() => {
+      removingIds = new Set([...removingIds].filter((id) => !idSet.has(id)));
+    }, STALL_MS + 500);
+  }
+
+  function deleteJobs(ids) {
+    // chrome.runtime.sendMessage({ type: 'postings:deleteJobs', ids })
+    removeJobs(ids);
   }
 
   // Fixed topbar height is dynamic now (the filter bar can wrap), so the list offsets from it.
