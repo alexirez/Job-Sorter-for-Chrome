@@ -363,6 +363,7 @@ body {
 .raw-json { margin-top: 10px; padding: 10px; background: var(--border-soft); border-radius: 6px; font-size: 11px; overflow-x: auto; }
 .note { font-size: 13px; color: var(--ink-muted); }
 .end-of-list { text-align: center; font-size: 12px; color: var(--ink-muted); padding: 20px 0; }
+.end-of-list.hidden { visibility: hidden; }
 
 .applying-filters-wrap {
   position: fixed;

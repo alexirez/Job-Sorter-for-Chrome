@@ -16,7 +16,7 @@
   let selectAllNode;
 
   let removingIds = $state(new Set()); // state for animated deletion
-  const STALL__DELETIONS_MS = 400;
+  const STALL_DELETIONS_MS = 400;
 
   onMount(async () => {
     try {
@@ -803,7 +803,7 @@
     }, STALL_DELETIONS_MS);
     setTimeout(() => {
       removingIds = new Set([...removingIds].filter((id) => !idSet.has(id)));
-    }, STALL_MS + 500);
+    }, STALL_DELETIONS_MS + 500);
   }
 
   function deleteJobs(ids) {
@@ -811,8 +811,17 @@
     removeJobs(ids);
   }
 
-  // Fixed topbar height is dynamic now (the filter bar can wrap), so the list offsets from it.
+  // Fixed topbar height is dynamic (the filter bar can wrap), so the list offsets from it.
   let topbarH = $state(0);
+
+  // "You've reached the end" only makes sense once the page actually scrolls.
+  let winH = $state(0);      // window.innerHeight
+  let contentH = $state(0);  // height of .content-flow
+  const END_BUFFER_PX = 200; // how far past one screen the page must run before the message appears
+  const PAGE_CHROME_PX = 76; // .content-flow margins: 16px above + 60px below
+  let showEnd = $derived(
+    filteredJobs.length > 0 && topbarH + contentH + PAGE_CHROME_PX > winH + END_BUFFER_PX
+  );
 
   // ---- Automation run (drives the Begin Applying button + hover popup) ----
   // null when idle. TODO: have the background push this while a run is active.
@@ -1163,7 +1172,7 @@ async function performWipe(target) {
     </div>
   {/snippet}
 
-  <svelte:window onclick={onWindowClick} onkeydown={(e) => { if (e.key === 'Escape') sortOpen = false; }} />
+  <svelte:window bind:innerHeight={winH} onclick={onWindowClick} onkeydown={(e) => { if (e.key === 'Escape') sortOpen = false; }} />
 
   <div class="postings-page" class:font-large={prefs.size === 'large'} style="--sidebar-w: {sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px; --topbar-h: {topbarH}px;">
   <div class="fixed-topbar" bind:clientHeight={topbarH}>
@@ -2072,7 +2081,7 @@ async function performWipe(target) {
     </div>
   {/if}
 
-  <div class="content-flow">
+  <div class="content-flow" bind:clientHeight={contentH}>
     {#if loadingState === 'loading'}
       <p class="note">Loading postings…</p>
     {:else if loadError}
@@ -2127,13 +2136,15 @@ async function performWipe(target) {
       {/if}
 
       {#each handledJobs as job (job.id)}
-        <div class="job-wrap" class:pending={removingIds.has(job.id)} :collapse={{ id: job.id }}>{@render jobCard(job, 'plain')}</div>
+        <div class="job-wrap" class:pending={removingIds.has(job.id)} out:collapse={{ id: job.id }}>{@render jobCard(job, 'plain')}</div>
       {/each}
 
       {#if filteredJobs.length === 0}
         <p class="note">No postings match the current filters.</p>
       {/if}
-      <p class="end-of-list">You've reached the end.</p>
+      {#if filteredJobs.length > 0}
+        <p class="end-of-list" class:hidden={!showEnd} aria-hidden={!showEnd}>You've reached the end.</p>
+      {/if}
     {/if}
   </div>
 </div>
