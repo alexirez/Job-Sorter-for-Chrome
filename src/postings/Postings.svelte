@@ -7,6 +7,7 @@
      starIcon, warnTriIcon
   } from '../ui/assets/icons';
   import './postings.css';
+  import { cubicOut } from 'svelte/easing';
 
   let jobs = $state([]);
   let loadingState = $state('loading'); // 'loading' | 'idle' | 'filtering'
@@ -775,6 +776,29 @@
     // TODO: track it (e.g. "Did you apply?" prompt, or mark Applied when the tab closes).
   }
 
+  // ---- Removing postings (animated) ----
+  // Ids currently being deleted. The collapse transition only plays for these, so a card
+  // that merely moves between the top-3 / hand-off / handled groups doesn't animate out.
+  let removingIds = new Set();
+
+  function collapse(node, { id, duration = 260 }) {
+    if (!removingIds.has(id)) return { duration: 0 };
+    const h = node.offsetHeight;
+    const GAP = 10; // must match .content-flow gap
+    return {
+      duration,
+      easing: cubicOut,
+      css: (t) => `overflow: hidden; height: ${t * h}px; margin-bottom: ${-(1 - t) * GAP}px; opacity: ${t};`
+    };
+  }
+
+  function removeJobs(ids) {
+    const idSet = new Set(ids);
+    removingIds = idSet;
+    jobs = jobs.filter((j) => !idSet.has(j.id));
+    setTimeout(() => (removingIds = new Set()), 500);
+  }
+
   // Fixed topbar height is dynamic now (the filter bar can wrap), so the list offsets from it.
   let topbarH = $state(0);
 
@@ -830,11 +854,13 @@
   // TODO: wire these up to real background messages once archive/delete land
   function archiveSelected() {
     // chrome.runtime.sendMessage({ type: 'postings:archiveJobs', ids: [...selectedIds] })
+    removeJobs([...selectedIds]);
     selectedIds = new Set();
   }
 
   function deleteSelected() {
     // chrome.runtime.sendMessage({ type: 'postings:deleteJobs', ids: [...selectedIds] })
+    removeJobs([...selectedIds]);
     selectedIds = new Set();
   }
 
@@ -2066,7 +2092,7 @@ async function performWipe(target) {
 
       {#if splitView}
         {#each manualJobs as job, i (job.id)}
-          {@render jobCard(job, 'manual', i)}
+          <div class="job-wrap" out:collapse={{ id: job.id }}>{@render jobCard(job, 'manual', i)}</div>
         {/each}
 
         {#if handoffJobs.length > 0}
@@ -2080,7 +2106,7 @@ async function performWipe(target) {
             <button class="handoff-btn" onclick={() => openModal('apply')}>Begin Applying</button>
           </aside>
           {#each handoffJobs as job (job.id)}
-            {@render jobCard(job, 'handoff')}
+            <div class="job-wrap" out:collapse={{ id: job.id }}>{@render jobCard(job, 'handoff')}</div>
           {/each}
         {/if}
 
@@ -2090,7 +2116,7 @@ async function performWipe(target) {
       {/if}
 
       {#each handledJobs as job (job.id)}
-        {@render jobCard(job, 'plain')}
+        <div class="job-wrap" out:collapse={{ id: job.id }}>{@render jobCard(job, 'plain')}</div>
       {/each}
 
       {#if filteredJobs.length === 0}
