@@ -24,7 +24,7 @@ export const QUICK_FILTERS = [
 
 export const SORT_OPTIONS = [
   { key: 'best', label: 'Best match' },
-  { key: 'ai', label: 'Let AI order them' },
+  { key: 'ai', label: 'AI scoring' },
   { key: 'pay', label: 'Highest pay' },
   { key: 'newest', label: 'Newest first' }
 ];
