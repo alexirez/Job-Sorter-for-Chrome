@@ -1,19 +1,40 @@
 <script>
   import { onMount } from 'svelte';
   import {
-     questionMarkIcon, filterIcon, chevronIcon, deleteIcon, archiveIcon,
-     applyIcon, uploadIcon, chevronsIcon, userIcon, preferencesIcon,
-     settingsIcon, fileTextIcon, slidersIcon, boltIcon, eyeOffIcon, 
-     starIcon, warnTriIcon, databaseIcon, sparklesIcon, mailIcon, bellIcon, 
-     shieldIcon, shieldCheckIcon, refreshIcon, syncIcon, sparkleIcon, 
-     planeIcon, rejectIcon, closeIcon, closeThinIcon, githubIcon
+    questionMarkIcon, filterIcon, chevronIcon, deleteIcon, archiveIcon,
+    applyIcon, uploadIcon, chevronsIcon, userIcon, preferencesIcon,
+    settingsIcon, fileTextIcon, slidersIcon, boltIcon, eyeOffIcon,
+    starIcon, warnTriIcon, shieldCheckIcon, syncIcon,
+    closeIcon, closeThinIcon, githubIcon
   } from '../ui/assets/icons';
   import './postings.css';
   import { cubicOut } from 'svelte/easing';
+  import * as Store from './data/storage';
+  import {
+    defaultPrefs, defaultSettings, defaultPersonal, defaultResumes, defaultFilterState,
+    newResume, newSchool, newJob, MIN_RESUMES
+  } from './data/defaults';
+  import {
+    DAY_MS, THREE_DAYS_MS, HOURS_PER_YEAR,
+    STATUS_TILES, QUICK_FILTERS, SORT_OPTIONS, OPEN_STATUSES, MANUAL_COUNT,
+    MODAL_TITLES, SAVEABLE_MODALS, LARGE_MODALS, NEEDS_LOAD_MODALS,
+    COMP_TYPES, WORK_TYPES, POSTED_WITHIN,
+    JOB_TYPES, RACE_OPTIONS, CARD_COLORS, BONUS_COLOR, KIND_LABELS, STAR_FIELDS, QUESTIONS, BASIC_TOTAL,
+    PREF_FIELDS, AUTOMATION_OPTIONS, RESUME_COLORS,
+    SETTINGS_SECTIONS, SEC, SOURCE_FIELDS, AI_PROVIDERS, AI_KEY_PLACEHOLDERS, AI_MODELS,
+    AI_TEST_LABELS, EMAIL_DOMAINS, EMAIL_OTHER
+  } from './data/constants';
 
+  // ---- Core state ----
   let jobs = $state([]);
   let loadingState = $state('loading'); // 'loading' | 'idle' | 'filtering'
   let loadError = $state('');
+  let loaded = $state(false); // saved data has been read; autosave and settings modals wait for this
+
+  let prefs = $state(defaultPrefs());
+  let settings = $state(defaultSettings());
+  let personal = $state(defaultPersonal());
+  let resumes = $state(defaultResumes());
 
   let selectAllNode;
 
@@ -21,6 +42,16 @@
   const STALL_DELETIONS_MS = 400;
 
   onMount(async () => {
+    [prefs, settings, personal, resumes] = await Promise.all([
+      Store.load('prefs', defaultPrefs()),
+      Store.load('settings', defaultSettings()),
+      Store.load('personal', defaultPersonal()),
+      Store.load('resumes', defaultResumes())
+    ]);
+    while (resumes.length < MIN_RESUMES) resumes.push(newResume());
+    ensureFallback();
+    loaded = true;
+
     try {
       const response = await chrome.runtime.sendMessage({ type: 'postings:getAllJobs' });
       if (!response.ok) throw new Error(response.error);
@@ -32,20 +63,15 @@
     }
   });
 
-  const STATUS_TILES = [
-    { key: 'new', label: 'New', icon: sparkleIcon, color: 'var(--new)' },
-    { key: 'shortlisted', label: 'Shortlisted', icon: starIcon, color: 'var(--shortlist)' },
-    { key: 'applied', label: 'Applied', icon: planeIcon, color: 'var(--applied)' },
-    { key: 'rejected', label: 'Rejected', icon: rejectIcon, color: 'var(--rejected)' }
-  ];
+  // Autosave. Each effect reads its whole state via $state.snapshot, so any nested change re-runs it.
+  // aiTest is a transient result, so it is never persisted.
+  $effect(() => { if (loaded) Store.saveSoon('prefs', $state.snapshot(prefs)); });
+  $effect(() => { if (loaded) Store.saveSoon('settings', { ...$state.snapshot(settings), aiTest: 'idle' }); });
+  $effect(() => { if (loaded) Store.saveSoon('personal', $state.snapshot(personal)); });
+  $effect(() => { if (loaded) Store.saveSoon('resumes', $state.snapshot(resumes)); });
+
   // There's no "All" tab anymore: clicking the active tile again goes back to all.
   function selectTile(key) { activeStatus = activeStatus === key ? 'all' : key; }
-
-  const QUICK_FILTERS = [
-    { key: 'remoteOnly', label: 'Remote only', tone: 'teal' },
-    { key: 'salaryListed', label: 'Salary listed', tone: 'amber' },
-    { key: 'postedThisWeek', label: 'Posted this week', tone: 'blue' }
-  ];
 
   // Tile sparklines: postings per day (by postedAt) over the last 6 days, as bar-height %.
   const SPARK_DAYS = 6;
@@ -69,9 +95,6 @@
     try { return JSON.stringify(JSON.parse(raw), null, 2); } catch { return raw ?? 'No raw data stored.'; }
   }
 
-  const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const HOURS_PER_YEAR = 2080;
   function stampFor(job) {
     if (job.status === 'new') {
       const isRecent = job.postedAt && Date.now() - new Date(job.postedAt).getTime() < THREE_DAYS_MS;
@@ -83,19 +106,6 @@
   }
 
   // ---- Modals: only one is ever open, so a single value tracks which ----
-  const MODAL_TITLES = {
-    filters: 'Filters',
-    personal: 'Edit personal info',
-    preferences: 'Edit preferences',
-    resumes: 'Resumes',
-    fetch: 'Fetch jobs',
-    apply: 'Begin applying',
-    settings: 'Settings',
-    help: 'Help'
-  };
-  const SAVEABLE_MODALS = ['personal', 'preferences', 'resumes'];
-  const LARGE_MODALS = ['personal', 'preferences', 'resumes', 'settings'];
-
   let activeModal = $state(null); // a key of MODAL_TITLES, or null when nothing is open
   let modalNode = $state(null);
   let wipeTarget = $state(null);  // 'personal' | 'postings' | null — which button is armed
@@ -104,6 +114,7 @@
   let wipeConfirmTimeout;
 
   function openModal(name) {
+    if (!loaded && NEEDS_LOAD_MODALS.includes(name)) return;
     activeModal = name;
   }
 
@@ -129,42 +140,6 @@
   let expandedIds = $state(new Set());
   let rawOpenIds = $state(new Set());
   let filters = $state({ remoteOnly: false, salaryListed: false, postedThisWeek: false });
-
-  const COMP_TYPES = {
-    salary: { min: 0, max: 500000, step: 1000, prefix: '$' },
-    hourly: { min: 0, max: 240, step: 1, prefix: '$' }
-  };
-  const WORK_TYPES = [
-    { key: 'inPerson', label: 'In-person' },
-    { key: 'remote', label: 'Remote' },
-    { key: 'hybrid', label: 'Hybrid' },
-    { key: 'unknown', label: 'Unknown' }
-  ];
-  const POSTED_WITHIN = [
-    { key: '24h', label: '24h' },
-    { key: '3d', label: '3d' },
-    { key: 'week', label: 'Week' },
-    { key: 'month', label: 'Month' },
-    { key: 'any', label: 'Any' }
-  ];
-
-  function defaultFilterState() {
-    return {
-      postedWithin: 'any',
-      compType: 'salary',
-      salaryMin: 60000,
-      salaryMax: 180000,
-      hourlyMin: 20,
-      hourlyMax: 80,
-      idealPayEnabled: false,
-      idealPay: 120000,
-      workType: { inPerson: true, remote: true, hybrid: true, unknown: true },
-      includeKeywords: [],
-      excludeKeywords: [],
-      aiFilterEnabled: false,
-      aiFilterPrompt: ''
-    };
-  }
 
   // The filters actually applied to the job list right now.
   let appliedFilterState = $state(defaultFilterState());
@@ -439,38 +414,27 @@
   const SIDEBAR_WIDTH_EXPANDED = 240;
   const SIDEBAR_WIDTH_COLLAPSED = 56;
   let sidebarCollapsed = $state(false);
-  const MIN_RESUMES = 3;
-  const newResume = (fb = false) => ({ id: crypto.randomUUID(), title: '', sim: [], fileName: '', fb });
-  let resumes = $state(Array.from({ length: MIN_RESUMES }, (_, i) => newResume(i === 0)));
 
-  // ---- Edit personal info: state ----
-  let personalName = $state('');
-  let personalDob = $state('');
-
-  let contacts = $state({ email: '', phone: '', linkedin: '', github: '' });
-  let customContacts = $state([]); // { id, label, value }
+  // ---- Edit personal info ----
   let newContactLabel = $state('');
   let newContactValue = $state('');
 
   function addCustomContact() {
     const value = newContactValue.trim();
     if (!value) return;
-    customContacts = [...customContacts, { id: crypto.randomUUID(), label: newContactLabel.trim() || 'Custom', value }];
+    personal.customContacts = [...personal.customContacts, { id: crypto.randomUUID(), label: newContactLabel.trim() || 'Custom', value }];
     newContactLabel = '';
     newContactValue = '';
   }
 
   function removeCustomContact(id) {
-    customContacts = customContacts.filter((c) => c.id !== id);
+    personal.customContacts = personal.customContacts.filter((c) => c.id !== id);
   }
 
-  let schools = $state([{ id: crypto.randomUUID(), name: '', start: '', end: '' }]);
-  let workHistory = $state([{ id: crypto.randomUUID(), company: '', type: '', start: '', end: '' }]);
-
-  function addSchool() { schools = [...schools, { id: crypto.randomUUID(), name: '', start: '', end: '' }]; }
-  function removeSchool(id) { schools = schools.filter((s) => s.id !== id); }
-  function addJob() { workHistory = [...workHistory, { id: crypto.randomUUID(), company: '', type: '', start: '', end: '' }]; }
-  function removeJob(id) { workHistory = workHistory.filter((j) => j.id !== id); }
+  function addSchool() { personal.schools = [...personal.schools, newSchool()]; }
+  function removeSchool(id) { personal.schools = personal.schools.filter((s) => s.id !== id); }
+  function addJob() { personal.workHistory = [...personal.workHistory, newJob()]; }
+  function removeJob(id) { personal.workHistory = personal.workHistory.filter((j) => j.id !== id); }
 
   // start/end are native <input type="month"> values ("YYYY-MM"), so no date parsing needed.
   function monthsBetween(start, end) {
@@ -489,90 +453,22 @@
     return whole === 0 && frac ? frac : `${whole}${frac ? ' ' + frac : ''}`;
   }
 
-  let experienceYears = $derived(workHistory.reduce((sum, j) => sum + monthsBetween(j.start, j.end), 0) / 12);
+  let experienceYears = $derived(personal.workHistory.reduce((sum, j) => sum + monthsBetween(j.start, j.end), 0) / 12);
   let experienceDisplay = $derived(formatYearsFraction(experienceYears));
-  let experienceOverride = $state('');
 
-  const JOB_TYPES = ['Full-time', 'Part-time', 'Self-employed', 'Other'];
-  const RACE_OPTIONS = ['White', 'Black', 'Hispanic', 'Asian', 'Other'];
-  let workAuth = $state('');
-  let startDate = $state('');
-  let relocation = $state(''); // 'very_likely' | 'no' | 'own_country'
-  let eeocGender = $state('');
-  let eeocRace = $state('');
-  let eeocRaceOther = $state('');
-  let eeocVeteran = $state('');
-  let eeocDisability = $state('');
-
-  let skills = $state([]);
   // Reuses addingKey / addValue from the Questions pills. Enter keeps the input open for rapid entry.
   function commitSkill(keepOpen = false) {
     const value = addValue.trim();
-    if (value && !skills.includes(value)) skills = [...skills, value];
+    if (value && !personal.skills.includes(value)) personal.skills = [...personal.skills, value];
     addValue = '';
     if (!keepOpen) addingKey = null;
   }
-  function removeSkill(index) { skills = skills.filter((_, i) => i !== index); }
-
-  // ---- Edit personal info: Questions tab ----
-  const CARD_COLORS = ['var(--new)', 'var(--shortlist)', 'var(--applied)'];
-  const BONUS_COLOR = '#c98a4b';
-  const KIND_LABELS = { open: 'Write', star: 'STAR template', pills: 'Pick', one: 'Pick one', dual: 'Pick', bonus: 'Optional' };
-  const STAR_FIELDS = [
-    { key: 'situation', label: 'Situation', placeholder: 'What was going on?' },
-    { key: 'action', label: 'What I did', placeholder: 'Your specific actions' },
-    { key: 'result', label: 'Result', placeholder: 'The outcome, with numbers if you have them' }
-  ];
-
-  // kind: 'open' (textarea) | 'star' (Situation/Action/Result) | 'pills' (multi-pick)
-  //       | 'one' (single pick, optional note) | 'dual' (two pill groups) | 'bonus'
-  const QUESTIONS = [
-    { id: 'describe', kind: 'open', title: 'Describe yourself in one paragraph',
-      placeholder: "I'm a [role] with [X years] in [field]. I'm known for [strength], and I'm looking for [what's next].",
-      template: "I'm a [role] with [X years] of experience in [field]. I'm known for [strength], and I'm looking for [what's next]." },
-    { id: 'passions', kind: 'dual', title: 'Passions & work preferences',
-      passions: ['Developer tools', 'Accessibility', 'Open source', 'Education', 'Healthcare', 'Climate'],
-      prefs: ['Remote', 'Hybrid', 'Small team', 'Async-first', 'Fast-paced', 'Mentorship'] },
-    { id: 'strengths', kind: 'pills', title: 'What are your greatest strengths?',
-      options: ['Problem solving', 'Communication', 'Ownership', 'Adaptability', 'Attention to detail', 'Mentoring'] },
-    { id: 'challenge', kind: 'star', title: 'Describe a challenge you overcame that showed your work ethic' },
-    { id: 'coworkers', kind: 'pills', title: 'How would coworkers describe you?',
-      options: ['Reliable', 'Curious', 'Calm under pressure', 'Direct', 'Collaborative', 'Creative'] },
-    { id: 'achievement', kind: 'star', title: 'What is your proudest professional achievement?' },
-    { id: 'motivation', kind: 'pills', title: 'What motivates you most?',
-      options: ['Impact', 'Learning', 'Craft', 'Autonomy', 'Recognition', 'Team wins'] },
-    { id: 'initiative', kind: 'star', title: 'Describe a time you led or took initiative' },
-    { id: 'management', kind: 'one', title: 'What management style helps you do your best work?',
-      options: ['Hands-off', 'Regular check-ins', 'Mentor-style', 'Direct feedback'] },
-    { id: 'mistake', kind: 'star', title: 'Describe a mistake and what you learned from it' },
-    { id: 'leaving', kind: 'one', title: 'Why did you leave (or are you leaving) your last role?',
-      options: ['Growth', 'Compensation', 'Layoff', 'Relocation', 'Career change', 'Other'], note: true },
-    { id: 'conflict', kind: 'open', title: 'How do you handle conflict on a team?',
-      template: 'When a disagreement comes up, I start by [first step]. For example, when [situation], I [action], and the result was [outcome].' },
-    { id: 'priorities', kind: 'open', title: 'How do you prioritize when everything is urgent?',
-      template: 'I start by [how you sort the list]. Then I [how you communicate or decide]. The last time this happened, I [example].' },
-    { id: 'fiveyears', kind: 'open', title: 'Where do you see yourself in five years?',
-      template: "In five years I'd like to be [role or scope], having built expertise in [skills]. I'm drawn to this path because [reason]." },
-    { id: 'hire', kind: 'open', title: 'Why should we hire you?',
-      template: 'I bring [top strength] plus [second strength]. In my last role I [proof point], and I can do the same here by [what you would do].' },
-    { id: 'bonus', kind: 'bonus', title: 'Bonus question',
-      subtitle: "Anything not covered above you'd like the autofiller to know.",
-      placeholder: 'Keep it short, e.g. career gaps, a move, constraints.' }
-  ];
-
-  function emptyAnswer(q) {
-    if (q.kind === 'star') return { situation: '', action: '', result: '' };
-    if (q.kind === 'pills') return [];
-    if (q.kind === 'one') return { value: '', note: '' };
-    if (q.kind === 'dual') return { passions: [], prefs: [] };
-    return ''; // open, bonus
-  }
+  function removeSkill(index) { personal.skills = personal.skills.filter((_, i) => i !== index); }
 
   let personalSection = $state('basic'); // 'basic' | 'questions'
-  let answers = $state(Object.fromEntries(QUESTIONS.map((q) => [q.id, emptyAnswer(q)])));
 
   function isAnswered(q) {
-    const a = answers[q.id];
+    const a = personal.answers[q.id];
     if (q.kind === 'open' || q.kind === 'bonus') return a.trim() !== '';
     if (q.kind === 'star') return Object.values(a).some((v) => v.trim() !== '');
     if (q.kind === 'pills') return a.length > 0;
@@ -582,65 +478,30 @@
   let answeredCount = $derived(QUESTIONS.filter(isAnswered).length);
 
   // ---- Edit personal info: Basic tab status ----
-  const BASIC_TOTAL = 7;
   let basicStatus = $derived.by(() => {
+    const p = personal;
     const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-    const nSchools = schools.filter((s) => s.name.trim()).length;
-    const nJobs = workHistory.filter((j) => j.company.trim()).length;
-    const anyContact = Object.values(contacts).some((v) => v.trim()) || customContacts.length > 0;
+    const nSchools = p.schools.filter((s) => s.name.trim()).length;
+    const nJobs = p.workHistory.filter((j) => j.company.trim()).length;
+    const anyContact = Object.values(p.contacts).some((v) => v.trim()) || p.customContacts.length > 0;
     const extrasDone = Boolean(
-      workAuth.trim() || startDate.trim() || relocation ||
-      eeocGender.trim() || eeocRace || eeocVeteran.trim() || eeocDisability.trim()
+      p.workAuth.trim() || p.startDate.trim() || p.relocation ||
+      p.eeoc.gender.trim() || p.eeoc.race || p.eeoc.veteran.trim() || p.eeoc.disability.trim()
     );
+    const identityDone = !!(p.name.trim() && p.dob);
     return {
-      identity:   { done: !!(personalName.trim() && personalDob), text: personalName.trim() && personalDob ? 'Done' : 'To do' },
+      identity:   { done: identityDone, text: identityDone ? 'Done' : 'To do' },
       contacts:   { done: anyContact, text: anyContact ? 'Done' : 'To do' },
       education:  { done: nSchools > 0, text: nSchools ? plural(nSchools, 'school') : 'To do' },
       work:       { done: nJobs > 0, text: nJobs ? plural(nJobs, 'job') : 'To do' },
-      experience: { done: experienceYears > 0 || experienceOverride.trim() !== '', text: 'Calculated from Work Experience' },
-      skills:     { done: skills.length > 0, text: skills.length ? `${skills.length} added` : 'To do' },
+      experience: { done: experienceYears > 0 || p.experienceOverride.trim() !== '', text: 'Calculated from Work Experience' },
+      skills:     { done: p.skills.length > 0, text: p.skills.length ? `${p.skills.length} added` : 'To do' },
       extras:     { done: extrasDone, text: extrasDone ? 'Done' : 'Optional' }
     };
   });
   let sectionsDone = $derived(Object.values(basicStatus).filter((s) => s.done).length);
 
   // ---- Edit preferences ----
-  const PREF_FIELDS = {
-    theme:  { color: 'var(--new)', options: [
-      { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }, { value: 'system', label: 'System' }] },
-    size:   { color: 'var(--shortlist)', options: [
-      { value: 'default', label: 'Default' }, { value: 'large', label: 'Large' }] },
-    comp:   { color: 'var(--bonus)', options: [
-      { value: 'salary', label: 'Salary' }, { value: 'hourly', label: 'Hourly' }, { value: 'auto', label: 'Auto' }] },
-    resume: { color: 'var(--applied)', options: [
-      { value: 'tags', label: 'my tags, or mark Unresolved' },
-      { value: 'ai', label: 'let AI decide when unsure' }] },
-    open:   { color: 'var(--new)', options: [
-      { value: 'exact', label: 'use my exact responses when possible, otherwise mark Unresolved' },
-      { value: 'ai', label: 'let AI generate all responses for variety' }] },
-    speed:  { color: 'var(--shortlist)', options: [
-      { value: 'instant', label: 'instantly' },
-      { value: 'human', label: 'at human speed (avoid anti-bot detection)' }] },
-    cover:  { color: 'var(--bonus)', options: [
-      { value: 'mine', label: 'always use mine, otherwise mark Unresolved' },
-      { value: 'ai', label: 'generate one based on what you know about me' }] }
-  };
-
-  const AUTOMATION_OPTIONS = [
-    { value: 'always_submit', title: 'Always submit when possible', desc: 'Fills and submits without asking.' },
-    { value: 'mark_uncertain', title: 'Mark Uncertain when data is missing', desc: 'Fills what it can and flags the gaps for you.' },
-    { value: 'simple_only', title: 'Only fill simple fields', desc: 'Names, contacts and dates. You do the rest.' }
-  ];
-
-  // TODO: persist these (e.g. chrome.storage.local) and load them on mount.
-  // "Save changes" currently just closes the modal, like the other saveable modals.
-  let prefs = $state({
-    theme: 'system', size: 'default', comp: 'auto',
-    automation: 'mark_uncertain',
-    resume: 'tags', open: 'exact',
-    speed: 'human', cover: 'mine'
-  });
-
   function prefLabel(key) {
     return PREF_FIELDS[key].options.find((o) => o.value === prefs[key])?.label;
   }
@@ -684,12 +545,6 @@
 
   let searchQuery = $state('');
 
-  const SORT_OPTIONS = [
-    { key: 'best', label: 'Best match' },
-    { key: 'ai', label: 'Let AI order them' },
-    { key: 'pay', label: 'Highest pay' },
-    { key: 'newest', label: 'Newest first' }
-  ];
   let sortBy = $state('best');
   let sortOpen = $state(false);
   let sortNode = $state(null);
@@ -723,8 +578,6 @@
   });
 
   // "You apply" (top N) → automation band → everything else.
-  const OPEN_STATUSES = ['new', 'shortlisted'];
-  const MANUAL_COUNT = 3;
   let splitView = $derived(activeStatus === 'all' || OPEN_STATUSES.includes(activeStatus));
   let openJobs = $derived(splitView ? filteredJobs.filter((j) => OPEN_STATUSES.includes(j.status)) : []);
   let manualJobs = $derived(openJobs.slice(0, MANUAL_COUNT));
@@ -778,7 +631,6 @@
   // ---- Removing postings (animated) ----
   // Ids currently being deleted. The collapse transition only plays for these, so a card
   // that merely moves between the top-3 / hand-off / handled groups doesn't animate out.
-
   function collapse(node, { id, duration = 260 }) {
     if (!removingIds.has(id)) return { duration: 0 };
     const h = node.offsetHeight;
@@ -793,7 +645,7 @@
   function removeJobs(ids) {
     const idSet = new Set(ids);
     removingIds = new Set([...removingIds, ...idSet]);
-      setTimeout(() => {
+    setTimeout(() => {
       jobs = jobs.filter((j) => !idSet.has(j.id));
       selectedIds = new Set([...selectedIds].filter((id) => !idSet.has(id)));
     }, STALL_DELETIONS_MS);
@@ -853,13 +705,13 @@
     selectedIds = selectedIds.size > 0 ? new Set() : new Set(filteredJobs.map((j) => j.id));
   }
 
-  function handleSelectAllClick(event) {
+  function handleSelectAllClick() {
     toggleSelectAllVisible();
     // selectAllNode comes from bind:this — a stable reference to the
     // element itself, independent of how this handler gets invoked.
     selectAllNode.indeterminate = selectedIds.size > 0 && selectedIds.size < filteredJobs.length;
     selectAllNode.checked = selectedIds.size > 0;
-  } 
+  }
 
   // Svelte has no `indeterminate` HTML attribute (it's a DOM-only property,
   // not reflected in markup), so a small action sets it directly on the node.
@@ -889,7 +741,6 @@
 
   // ---- Resumes ----
   // Resume shape: { id, title, sim: string[], fileName, fb }
-  const RESUME_COLORS = ['var(--new)', 'var(--shortlist)', 'var(--applied)', 'var(--bonus)'];
 
   // Compare titles ignoring case, punctuation, Sr./Jr. and front-end / front end / frontend.
   function normTitle(s) {
@@ -931,7 +782,7 @@
         }))
       )
       .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }))
-   );
+  );
 
   let resumeError = $state('');
   let dragOverId = $state(null);
@@ -944,6 +795,7 @@
     resumes = resumes.filter((r) => r.id !== id);
     while (resumes.length < MIN_RESUMES) resumes.push(newResume());
     ensureFallback();
+    Store.deleteResumeFile(id);
   }
 
   function setFallback(id) {
@@ -993,7 +845,7 @@
     if (!/\.(pdf|docx?)$/i.test(file.name)) { resumeError = 'Please choose a PDF, DOC or DOCX file.'; return; }
     resumeError = '';
     r.fileName = file.name;
-    // TODO: persist the file itself (e.g. read as ArrayBuffer into IndexedDB); only the name is kept for now.
+    Store.putResumeFile(id, file);
   }
   function onResumePick(id, e) {
     setResumeFile(id, e.currentTarget.files?.[0]);
@@ -1007,51 +859,10 @@
   function clearResumeFile(id) {
     const r = resumes.find((x) => x.id === id);
     if (r) r.fileName = '';
+    Store.deleteResumeFile(id);
   }
 
   // ---- Settings ----
-  const SETTINGS_SECTIONS = [
-    { id: 'src',    title: 'Sources',    color: 'var(--new)',      icon: databaseIcon, desc: 'API tokens for job boards. Tokens stay on this device.' },
-    { id: 'ai',     title: 'AI Model',   color: 'var(--applied)',  icon: sparklesIcon, desc: 'Pick a provider, connect it, and choose what AI is allowed to do.' },
-    { id: 'email',  title: 'Email',      color: 'var(--shortlist)', icon: mailIcon,    desc: 'Let the extension follow your applications through your inbox.' },
-    { id: 'auto',   title: 'Automation', color: 'var(--bonus)',    icon: boltIcon,     desc: 'How much the autofiller and fetcher do on their own.' },
-    { id: 'alerts', title: 'Alerts',     color: 'var(--new)',      icon: bellIcon,     desc: 'Choose what is worth interrupting you for.' },
-    { id: 'data',   title: 'Data',       color: 'var(--rejected)', icon: shieldIcon,   desc: 'Storage, cleanup and your exports.' }
-  ];
-  const SEC = Object.fromEntries(SETTINGS_SECTIONS.map((s) => [s.id, s]));
-
-  const SOURCE_FIELDS = [
-    { key: 'adzuna',  label: 'Adzuna',            desc: 'Job listings API',      placeholder: 'paste app key' },
-    { key: 'jsearch', label: 'JSearch (RapidAPI)', desc: 'Aggregated listings',   placeholder: 'paste RapidAPI key' },
-    { key: 'usajobs', label: 'USAJobs',           desc: 'US federal positions',  placeholder: 'paste API key' }
-  ];
-  const AI_PROVIDERS = ['Anthropic', 'OpenAI', 'Google', 'Ollama (local)', 'Custom'];
-  const AI_KEY_PLACEHOLDERS = ['sk-ant-...', 'sk-...', 'AIza...', '', 'paste token'];
-  // Suggestions only, since the field is free text. Verify names against each provider's docs.
-  const AI_MODELS = [['claude-haiku-4-5-20251001', 'claude-sonnet-5-5'], ['gpt-4o-mini'], ['gemini-2.0-flash'], ['llama3.1'], []];
-  const AI_TEST_LABELS = {
-    idle: ['Not tested', ''],
-    busy: ['Testing…', ''],
-    ok:   ['Connected · model replied', 'ok'],
-    fail: ["Couldn't connect. Check key and model.", 'bad']
-  };
-  const EMAIL_DOMAINS = ['gmail.com', 'outlook.com', 'yahoo.com', 'proton.me', 'icloud.com', 'Other…'];
-  const EMAIL_OTHER = EMAIL_DOMAINS.length - 1;
-
-  // TODO: persist this (chrome.storage.local, NOT sync, because tokens are secrets) and load it on mount.
-  let settings = $state({
-    merge: true,
-    tokens: { adzuna: '', jsearch: '', usajobs: '', ai0: '', ai1: '', ai2: '', ai4: '' },
-    customSources: [], // { id, name, token }
-    aiProvider: 0, aiUrl: 'http://localhost:11434', aiModel: AI_MODELS[0][0], aiTest: 'idle',
-    aiOpen: true, aiFilter: true, aiPick: true,
-    emailAccess: false, emailUser: '', emailDomain: 0, emailCustom: '',
-    readOnStartup: true, scanDays: 1, autoStatus: true,
-    noMatch: 0, dailyLimit: 25, autoFetch: 2, pauseCaptcha: true, skipApplied: true,
-    notif: true, nReview: true, nMatch: true, nSkip: true, digest: 0,
-    quiet: false, quietFrom: '22:00', quietTo: '07:00',
-    deleteOld: true, deleteDays: 60, keepApplied: true, storeRaw: true
-  });
   let showKeys = $state({});
 
   // Hero meter: [count, total, label] per section
@@ -1147,41 +958,41 @@
     settingsPanelNode.scrollTo({ top: el.offsetTop - 2, behavior: reduce ? 'auto' : 'smooth' });
   }
 
-function requestWipe(target) {
-  if (wipeTarget !== target) {
-    wipeTarget = target;
-    clearTimeout(wipeConfirmTimeout);
-    wipeConfirmTimeout = setTimeout(() => (wipeTarget = null), 4000);
-    return;
-  }
-  performWipe(target);
-}
-
-async function performWipe(target) {
-  clearTimeout(wipeConfirmTimeout);
-  wipeTarget = null;
-  wiping = target;
-  wipeError = '';
-  try {
-    if (target === 'postings') {
-      const response = await chrome.runtime.sendMessage({ type: 'postings:wipeJobs' });
-      if (!response.ok) throw new Error(response.error);
-      jobs = [];
-      selectedIds = new Set();
-      expandedIds = new Set();
-      rawOpenIds = new Set();
-      activeModal = null;
-    } else if (target === 'personal') {
-      // TODO: no personal-info storage exists yet — wire this up once
-      // Edit personal info actually persists something to wipe.
-      throw new Error('Not implemented yet');
+  function requestWipe(target) {
+    if (wipeTarget !== target) {
+      wipeTarget = target;
+      clearTimeout(wipeConfirmTimeout);
+      wipeConfirmTimeout = setTimeout(() => (wipeTarget = null), 4000);
+      return;
     }
-  } catch (err) {
-    wipeError = err.message;
-  } finally {
-    wiping = null;
+    performWipe(target);
   }
-}
+
+  async function performWipe(target) {
+    clearTimeout(wipeConfirmTimeout);
+    wipeTarget = null;
+    wiping = target;
+    wipeError = '';
+    try {
+      if (target === 'postings') {
+        const response = await chrome.runtime.sendMessage({ type: 'postings:wipeJobs' });
+        if (!response.ok) throw new Error(response.error);
+        jobs = [];
+        selectedIds = new Set();
+        expandedIds = new Set();
+        rawOpenIds = new Set();
+        activeModal = null;
+      } else if (target === 'personal') {
+        await Store.remove('personal', 'prefs');
+        personal = defaultPersonal();
+        prefs = defaultPrefs();
+      }
+    } catch (err) {
+      wipeError = err.message;
+    } finally {
+      wiping = null;
+    }
+  }
 </script>
 
   {#snippet pillGroup(qid, holder, key, options, single = false)}
@@ -1353,7 +1164,12 @@ async function performWipe(target) {
     </div>
   {/snippet}
 
-  <svelte:window bind:innerHeight={winH} onclick={onWindowClick} onkeydown={(e) => { if (e.key === 'Escape') sortOpen = false; }} />
+  <svelte:window
+    bind:innerHeight={winH}
+    onclick={onWindowClick}
+    onkeydown={(e) => { if (e.key === 'Escape') sortOpen = false; }}
+    onpagehide={Store.flush}
+  />
 
   <div class="postings-page" class:font-large={prefs.size === 'large'} style="--sidebar-w: {sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED}px; --topbar-h: {topbarH}px;">
   <div class="fixed-topbar" bind:clientHeight={topbarH}>
@@ -1475,7 +1291,7 @@ async function performWipe(target) {
     </div>
   {/if}
 
-    <aside class="details-sidebar" class:collapsed={sidebarCollapsed}>
+  <aside class="details-sidebar" class:collapsed={sidebarCollapsed}>
     <div class="sidebar-header">
       <button
         class="sidebar-collapse-btn"
@@ -1571,7 +1387,7 @@ async function performWipe(target) {
         {#if activeModal === 'filters'}
           <div class="filter-sections">
             <div class="filter-section">
-              <div class="filter-section-header">                
+              <div class="filter-section-header">
                 <span>Posted within</span>
                 <span class="filter-section-summary">
                   {POSTED_WITHIN.find((o) => o.key === draftFilterState.postedWithin)?.label}
@@ -1589,7 +1405,7 @@ async function performWipe(target) {
             </div>
 
             <div class="filter-section">
-              <div class="filter-section-header">                
+              <div class="filter-section-header">
                 <span>Compensation</span>
                 <span class="filter-section-summary">
                   {draftFilterState.compType === 'salary' ? 'Salary' : 'Hourly'}: {compBounds().prefix}{formatComp(compMinValue())}&ndash;{compBounds().prefix}{formatComp(compMaxValue())}
@@ -1664,7 +1480,8 @@ async function performWipe(target) {
                       onchange={() => {
                         draftFilterState.idealPayEnabled = !draftFilterState.idealPayEnabled;
                         reclampIdealPay();
-                      }}                    />
+                      }}
+                    />
                   </span>
                 </label>
                 {#if draftFilterState.idealPayEnabled}
@@ -1680,16 +1497,16 @@ async function performWipe(target) {
                   {Object.values(draftFilterState.workType).every(Boolean) ? 'All included' : `${Object.values(draftFilterState.workType).filter(Boolean).length} of 4`}
                 </span>
               </div>
-               <div class="filter-section-body">
-                 <div class="work-type-grid">
-                   {#each WORK_TYPES as wt}
-                     <label class="work-type-item">
-                       <input type="checkbox" checked={draftFilterState.workType[wt.key]} onchange={() => toggleWorkType(wt.key)} />
-                       {wt.label}
-                     </label>
-                   {/each}
-                 </div>
-               </div>
+              <div class="filter-section-body">
+                <div class="work-type-grid">
+                  {#each WORK_TYPES as wt}
+                    <label class="work-type-item">
+                      <input type="checkbox" checked={draftFilterState.workType[wt.key]} onchange={() => toggleWorkType(wt.key)} />
+                      {wt.label}
+                    </label>
+                  {/each}
+                </div>
+              </div>
             </div>
 
             <div class="filter-section">
@@ -1790,8 +1607,8 @@ async function performWipe(target) {
                 <div class="bs" style="--c: var(--new)">
                   {@render sectionHead(1, 'Identity', basicStatus.identity)}
                   <div class="field-grid">
-                    <div class="field"><label for="pi-name">Full name</label><input id="pi-name" bind:value={personalName} /></div>
-                    <div class="field"><label for="pi-dob">Date of birth</label><input id="pi-dob" type="date" bind:value={personalDob} /></div>
+                    <div class="field"><label for="pi-name">Full name</label><input id="pi-name" bind:value={personal.name} /></div>
+                    <div class="field"><label for="pi-dob">Date of birth</label><input id="pi-dob" type="date" bind:value={personal.dob} /></div>
                   </div>
                 </div>
 
@@ -1800,25 +1617,25 @@ async function performWipe(target) {
                   {@render sectionHead(2, 'Contacts', basicStatus.contacts)}
                   <div class="contact-row">
                     <label class="contact-label" for="pi-contact-email">Email</label>
-                    <input id="pi-contact-email" class="contact-input" bind:value={contacts.email} placeholder="you@example.com" />
+                    <input id="pi-contact-email" class="contact-input" bind:value={personal.contacts.email} placeholder="you@example.com" />
                     <span class="contact-spacer"></span>
                   </div>
                   <div class="contact-row">
                     <label class="contact-label" for="pi-contact-phone">Phone</label>
-                    <input id="pi-contact-phone" class="contact-input" bind:value={contacts.phone} placeholder="(555) 010-2938" />
+                    <input id="pi-contact-phone" class="contact-input" bind:value={personal.contacts.phone} placeholder="(555) 010-2938" />
                     <span class="contact-spacer"></span>
                   </div>
                   <div class="contact-row">
                     <label class="contact-label" for="pi-contact-linkedin">LinkedIn</label>
-                    <input id="pi-contact-linkedin" class="contact-input" bind:value={contacts.linkedin} placeholder="linkedin.com/in/you" />
+                    <input id="pi-contact-linkedin" class="contact-input" bind:value={personal.contacts.linkedin} placeholder="linkedin.com/in/you" />
                     <span class="contact-spacer"></span>
                   </div>
                   <div class="contact-row">
                     <label class="contact-label" for="pi-contact-github">GitHub</label>
-                    <input id="pi-contact-github" class="contact-input" bind:value={contacts.github} placeholder="github.com/you" />
+                    <input id="pi-contact-github" class="contact-input" bind:value={personal.contacts.github} placeholder="github.com/you" />
                     <span class="contact-spacer"></span>
                   </div>
-                  {#each customContacts as c (c.id)}
+                  {#each personal.customContacts as c (c.id)}
                     <div class="contact-row">
                       <input class="contact-input contact-label-input" bind:value={c.label} />
                       <input class="contact-input" bind:value={c.value} />
@@ -1840,9 +1657,9 @@ async function performWipe(target) {
                 <!-- 3 Education -->
                 <div class="bs" style="--c: var(--applied)">
                   {@render sectionHead(3, 'Education', basicStatus.education, 'Add every school you attended')}
-                  {#each schools as school (school.id)}
+                  {#each personal.schools as school (school.id)}
                     <div class="entry-card">
-                      {#if schools.length > 1}
+                      {#if personal.schools.length > 1}
                         <button class="entry-remove" onclick={() => removeSchool(school.id)}>Remove</button>
                       {/if}
                       <div class="entry-row full"><div class="field"><label for="school-name-{school.id}">School</label><input id="school-name-{school.id}" bind:value={school.name} /></div></div>
@@ -1858,9 +1675,9 @@ async function performWipe(target) {
                 <!-- 4 Work experience -->
                 <div class="bs" style="--c: var(--bonus)">
                   {@render sectionHead(4, 'Work experience', basicStatus.work, "Add every role you've held")}
-                  {#each workHistory as job (job.id)}
+                  {#each personal.workHistory as job (job.id)}
                     <div class="entry-card">
-                      {#if workHistory.length > 1}
+                      {#if personal.workHistory.length > 1}
                         <button class="entry-remove" onclick={() => removeJob(job.id)}>Remove</button>
                       {/if}
                       <div class="entry-row">
@@ -1887,16 +1704,16 @@ async function performWipe(target) {
                   {@render sectionHead(5, 'Years of experience', basicStatus.experience)}
                   <div class="exp-row">
                     <span class="exp-auto">{experienceDisplay} years — calculated from work history</span>
-                    <span class="exp-override">Override <input bind:value={experienceOverride} placeholder={experienceDisplay} /></span>
+                    <span class="exp-override">Override <input bind:value={personal.experienceOverride} placeholder={experienceDisplay} /></span>
                   </div>
                 </div>
 
                 <!-- 6 Skills -->
                 <div class="bs" style="--c: var(--shortlist)">
                   {@render sectionHead(6, 'Skills & certifications', basicStatus.skills)}
-                  {#if skills.length > 0}
+                  {#if personal.skills.length > 0}
                     <div class="q-pills">
-                      {#each skills as skill, i}
+                      {#each personal.skills as skill, i}
                         <span class="q-pill on">{skill}<button type="button" class="q-pill-x" onclick={() => removeSkill(i)} aria-label="Remove {skill}">×</button></span>
                       {/each}
                     </div>
@@ -1925,33 +1742,33 @@ async function performWipe(target) {
                 <div class="bs" style="--c: var(--applied)">
                   {@render sectionHead(7, 'Extras', basicStatus.extras)}
                   <div class="field-grid">
-                    <div class="field"><label for="pi-workauth">Work authorization</label><input id="pi-workauth" bind:value={workAuth} placeholder="e.g. Authorized, no sponsorship needed" /></div>
-                    <div class="field"><label for="pi-startdate">Earliest start date</label><input id="pi-startdate" bind:value={startDate} placeholder="e.g. 2 weeks notice" /></div>
+                    <div class="field"><label for="pi-workauth">Work authorization</label><input id="pi-workauth" bind:value={personal.workAuth} placeholder="e.g. Authorized, no sponsorship needed" /></div>
+                    <div class="field"><label for="pi-startdate">Earliest start date</label><input id="pi-startdate" bind:value={personal.startDate} placeholder="e.g. 2 weeks notice" /></div>
                     <div class="field">
                       <span id="pi-relocation-label" class="field-label">Are you willing to relocate?</span>
                       <div class="pill-row" role="group" aria-labelledby="pi-relocation-label">
-                        <button type="button" class="pill-toggle" class:active={relocation === 'very_likely'} onclick={() => (relocation = 'very_likely')}>Very likely</button>
-                        <button type="button" class="pill-toggle" class:active={relocation === 'no'} onclick={() => (relocation = 'no')}>No</button>
-                        <button type="button" class="pill-toggle" class:active={relocation === 'own_country'} onclick={() => (relocation = 'own_country')}>Only in my own country</button>
+                        <button type="button" class="pill-toggle" class:active={personal.relocation === 'very_likely'} onclick={() => (personal.relocation = 'very_likely')}>Very likely</button>
+                        <button type="button" class="pill-toggle" class:active={personal.relocation === 'no'} onclick={() => (personal.relocation = 'no')}>No</button>
+                        <button type="button" class="pill-toggle" class:active={personal.relocation === 'own_country'} onclick={() => (personal.relocation = 'own_country')}>Only in my own country</button>
                       </div>
                     </div>
                   </div>
 
                   <div class="extras-divider"><span class="extras-label">Voluntary demographic info (EEOC)</span></div>
                   <div class="field-grid">
-                    <div class="field"><label for="pi-gender">Gender</label><input id="pi-gender" bind:value={eeocGender} /></div>
+                    <div class="field"><label for="pi-gender">Gender</label><input id="pi-gender" bind:value={personal.eeoc.gender} /></div>
                     <div class="field">
                       <label for="pi-race">Race / ethnicity</label>
-                      <select id="pi-race" bind:value={eeocRace}>
+                      <select id="pi-race" bind:value={personal.eeoc.race}>
                         <option value="">Select…</option>
                         {#each RACE_OPTIONS as r}<option value={r}>{r}</option>{/each}
                       </select>
-                      {#if eeocRace === 'Other'}
-                        <input bind:value={eeocRaceOther} placeholder="Please specify" aria-label="Race / ethnicity, other" />
+                      {#if personal.eeoc.race === 'Other'}
+                        <input bind:value={personal.eeoc.raceOther} placeholder="Please specify" aria-label="Race / ethnicity, other" />
                       {/if}
                     </div>
-                    <div class="field"><label for="pi-veteran">Veteran status</label><input id="pi-veteran" bind:value={eeocVeteran} /></div>
-                    <div class="field"><label for="pi-disability">Disability status</label><input id="pi-disability" bind:value={eeocDisability} /></div>
+                    <div class="field"><label for="pi-veteran">Veteran status</label><input id="pi-veteran" bind:value={personal.eeoc.veteran} /></div>
+                    <div class="field"><label for="pi-disability">Disability status</label><input id="pi-disability" bind:value={personal.eeoc.disability} /></div>
                   </div>
                 </div>
               </div>
@@ -1976,31 +1793,31 @@ async function performWipe(target) {
                     <textarea
                       class="q-textarea"
                       aria-labelledby="q-title-{q.id}"
-                      bind:value={answers[q.id]}
+                      bind:value={personal.answers[q.id]}
                       placeholder={q.placeholder ?? 'Write 2–4 sentences. Specifics beat generalities.'}
                     ></textarea>
-                    {#if q.template && !answers[q.id].trim()}
-                      <button type="button" class="q-template-btn" onclick={() => (answers[q.id] = q.template)}>✦ Insert starter template</button>
+                    {#if q.template && !personal.answers[q.id].trim()}
+                      <button type="button" class="q-template-btn" onclick={() => (personal.answers[q.id] = q.template)}>✦ Insert starter template</button>
                     {/if}
                   {:else if q.kind === 'star'}
                     <div class="q-star3">
                       {#each STAR_FIELDS as f}
                         <label for="q-{q.id}-{f.key}">{f.label}</label>
-                        <textarea id="q-{q.id}-{f.key}" class="q-textarea" bind:value={answers[q.id][f.key]} placeholder={f.placeholder}></textarea>
+                        <textarea id="q-{q.id}-{f.key}" class="q-textarea" bind:value={personal.answers[q.id][f.key]} placeholder={f.placeholder}></textarea>
                       {/each}
                     </div>
                   {:else if q.kind === 'pills'}
-                    {@render pillGroup(q.id, answers, q.id, q.options)}
+                    {@render pillGroup(q.id, personal.answers, q.id, q.options)}
                   {:else if q.kind === 'one'}
-                    {@render pillGroup(q.id, answers[q.id], 'value', q.options, true)}
+                    {@render pillGroup(q.id, personal.answers[q.id], 'value', q.options, true)}
                     {#if q.note}
-                      <input class="q-note" bind:value={answers[q.id].note} placeholder="Optional: one line of context" aria-label="Optional context" />
+                      <input class="q-note" bind:value={personal.answers[q.id].note} placeholder="Optional: one line of context" aria-label="Optional context" />
                     {/if}
                   {:else}
                     <div class="q-grp" style="color: var(--new)">Passions</div>
-                    <div style="--c: var(--new)">{@render pillGroup(q.id, answers[q.id], 'passions', q.passions)}</div>
+                    <div style="--c: var(--new)">{@render pillGroup(q.id, personal.answers[q.id], 'passions', q.passions)}</div>
                     <div class="q-grp" style="color: var(--shortlist)">Work preferences</div>
-                    <div style="--c: var(--shortlist)">{@render pillGroup(q.id, answers[q.id], 'prefs', q.prefs)}</div>
+                    <div style="--c: var(--shortlist)">{@render pillGroup(q.id, personal.answers[q.id], 'prefs', q.prefs)}</div>
                   {/if}
                 </div>
               {/each}
@@ -2174,7 +1991,7 @@ async function performWipe(target) {
 
         {:else if activeModal === 'apply'}
           <!-- TODO: apply modal content -->
-        
+
         {:else if activeModal === 'settings'}
           <div class="st-body">
             <nav class="st-rail" aria-label="Settings sections">
@@ -2492,7 +2309,7 @@ async function performWipe(target) {
     {#if loadingState === 'loading'}
       <p class="note note-empty">Loading postings…</p>
     {:else if loadError}
-      <p class="note note-empty" >Couldn't load postings: {loadError}</p>
+      <p class="note note-empty">Couldn't load postings: {loadError}</p>
     {:else}
       <header class="list-head">
         {#if splitView && manualJobs.length > 0}
