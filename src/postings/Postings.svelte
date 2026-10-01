@@ -1144,7 +1144,7 @@ async function performWipe(target) {
           {/if}
         </div>
         <div class="job-actions">
-          <button class="job-act shortlist" class:on={job.status === 'shortlisted'} aria-pressed={job.status === 'shortlisted'} aria-label="Shortlist" title="Shortlist" onclick={act(() => toggleShortlist(job))}>{@html starIcon}</button>
+          <button class="job-act shortlist" class:on={job.status === 'shortlisted'} aria-pressed={job.status === 'shortlisted'} aria-label="Shortlist" title="Mark Shortlisted" onclick={act(() => toggleShortlist(job))}>{@html starIcon}</button>
           <button class="job-act reject" aria-label="Delete" title="Delete" onclick={act(() => deleteJobs([job.id]))}>{@html closeIcon}</button>
           <button class="job-apply" onclick={act(() => openPosting(job))}>Apply ↗</button>
         </div>
