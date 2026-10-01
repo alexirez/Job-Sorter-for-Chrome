@@ -439,7 +439,9 @@
   const SIDEBAR_WIDTH_EXPANDED = 240;
   const SIDEBAR_WIDTH_COLLAPSED = 56;
   let sidebarCollapsed = $state(false);
-  let resumes = $state([]);
+  const MIN_RESUMES = 3;
+  const newResume = (fb = false) => ({ id: crypto.randomUUID(), title: '', sim: [], fileName: '', fb });
+  let resumes = $state(Array.from({ length: MIN_RESUMES }, (_, i) => newResume(i === 0)));
 
   // ---- Edit personal info: state ----
   let personalName = $state('');
@@ -917,11 +919,29 @@
   const dupNames = (r, title) => otherOwners(r, title).map((q) => q.title.trim() || 'Untitled').join(', ');
   let sharedTitleCount = $derived([...titleOwners.values()].filter((o) => o.length > 1).length);
 
+  // One flat list of every title, colored by the resume it belongs to.
+  let coverageChips = $derived(
+    resumes.flatMap((r, i) =>
+      resumeTitles(r).map((t, j) => ({
+        key: `${r.id}-${j}`,
+        title: t,
+        resume: r,
+        color: RESUME_COLORS[i % RESUME_COLORS.length]
+      }))
+    )
+  );
+
   let resumeError = $state('');
   let dragOverId = $state(null);
 
   function addResume() {
-    resumes = [...resumes, { id: crypto.randomUUID(), title: '', sim: [], fileName: '', fb: resumes.length === 0 }];
+    resumes = [...resumes, newResume(resumes.length === 0)];
+  }
+
+  function removeResume(id) {
+    resumes = resumes.filter((r) => r.id !== id);
+    while (resumes.length < MIN_RESUMES) resumes.push(newResume());
+    ensureFallback();
   }
 
   function setFallback(id) {
@@ -929,11 +949,6 @@
   }
   function ensureFallback() {
     if (resumes.length && !resumes.some((r) => r.fb)) resumes[0].fb = true;
-  }
-
-  function removeResume(id) {
-    resumes = resumes.filter((r) => r.id !== id);
-    ensureFallback();
   }
 
   // Accepts "A, B; C" or pasted lines. Skips titles that already exist on this resume.
@@ -1494,8 +1509,8 @@ async function performWipe(target) {
         <button class="sidebar-btn sidebar-btn-outline" onclick={() => openModal('resumes')}>
           <span class="sb-ic" style="--ic: var(--applied)">{@html uploadIcon}</span>
           <span class="sidebar-label" style="flex:1;">Upload resume</span>
-          {#if resumes.length > 0}
-            <span class="sidebar-count sidebar-label">{resumes.length}</span>
+          {#if resumes.some((r) => r.fileName)}
+            <span class="sidebar-count sidebar-label">{resumes.filter((r) => r.fileName).length}</span>
           {/if}
         </button>
       </div>
@@ -2023,20 +2038,14 @@ async function performWipe(target) {
           <p class="filter-hint">The autofiller picks a resume by matching job titles.</p>
           {#if resumeError}<p class="filter-hint wipe-error">{resumeError}</p>{/if}
 
-          {#if resumes.length > 0}
-            <div class="rs-map">
-              <div class="rs-map-title">Title coverage</div>
-              {#each resumes as r, i (r.id)}
-                <div class="rs-lane" style="--c: {RESUME_COLORS[i % RESUME_COLORS.length]}">
-                  <span class="rs-dot"></span>
-                  <b class="rs-lane-name">{r.title.trim() || 'Untitled'}{#if r.fb}<span class="rs-lane-star" title="Fallback resume" aria-label="Fallback resume">★</span>{/if}</b>
-                  <span class="rs-lane-pills">
-                    {#each resumeTitles(r) as t}
-                      <span class="rs-mpill" class:dup={isDuplicate(r, t)}>{t}</span>
-                    {/each}
-                  </span>
-                </div>
-              {/each}
+          <div class="rs-map">
+            <div class="rs-map-title">Title coverage</div>
+            {#if coverageChips.length > 0}
+              <div class="rs-map-scroll">
+                {#each coverageChips as c (c.key)}
+                  <span class="rs-mpill" style="--c: {c.color}" class:dup={isDuplicate(c.resume, c.title)}>{c.title}</span>
+                {/each}
+              </div>
               <div class="rs-map-foot" class:bad={sharedTitleCount > 0}>
                 {#if sharedTitleCount > 0}
                   <span class="rs-tri" aria-hidden="true">{@html warnTriIcon}</span>
@@ -2045,8 +2054,10 @@ async function performWipe(target) {
                   ✓ Every title belongs to exactly one resume
                 {/if}
               </div>
-            </div>
-          {/if}
+            {:else}
+              <p class="rs-map-empty">Currently empty. Add titles to each resume so the autofiller knows which resume to upload to each job posting.</p>
+            {/if}
+          </div>
 
           {#each resumes as r, i (r.id)}
             {@const titleDup = isDuplicate(r, r.title)}
@@ -2068,7 +2079,7 @@ async function performWipe(target) {
                       <span class="rs-tri rs-tri-head" tabindex="0" aria-label="Duplicate title" aria-describedby="rs-tip-title-{r.id}" onkeydown={closeTip}>
                         {@html warnTriIcon}
                         <span class="rs-tip" role="tooltip" id="rs-tip-title-{r.id}">
-                          <b>Duplicate title</b>“{r.title}” is also under {dupNames(r, r.title)}. Keep it under one resume so the autofiller can choose the best match.
+                          <b>Duplicate title</b>“{r.title}” is also under {dupNames(r, r.title)}. Keep it under one resume so the autofiller can easily choose the best resume for each job posting.
                         </span>
                       </span>
                     {/if}
