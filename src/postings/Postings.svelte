@@ -10,19 +10,11 @@
   import './postings.css';
   import { cubicOut } from 'svelte/easing';
   import * as Store from './data/storage';
-  import {
-    defaultPrefs, defaultSettings, defaultPersonal, defaultResumes, defaultFilterState,
-    newResume, newSchool, newJob, MIN_RESUMES
+  import { 
+    defaultPrefs, defaultSettings, defaultPersonal, defaultResumes, defaultFilterState, newResume, newSchool, newJob, MIN_RESUMES
   } from './data/defaults';
   import {
-    DAY_MS, THREE_DAYS_MS, HOURS_PER_YEAR,
-    STATUS_TILES, QUICK_FILTERS, SORT_OPTIONS, OPEN_STATUSES, MANUAL_COUNT,
-    MODAL_TITLES, SAVEABLE_MODALS, LARGE_MODALS, NEEDS_LOAD_MODALS,
-    COMP_TYPES, WORK_TYPES, POSTED_WITHIN,
-    JOB_TYPES, RACE_OPTIONS, CARD_COLORS, BONUS_COLOR, KIND_LABELS, STAR_FIELDS, QUESTIONS, BASIC_TOTAL,
-    PREF_FIELDS, AUTOMATION_OPTIONS, RESUME_COLORS,
-    SETTINGS_SECTIONS, SEC, SOURCE_FIELDS, AI_PROVIDERS, AI_KEY_PLACEHOLDERS, AI_MODELS,
-    AI_TEST_LABELS, EMAIL_DOMAINS, EMAIL_OTHER
+    DAY_MS, THREE_DAYS_MS, HOURS_PER_YEAR, STATUS_TILES, QUICK_FILTERS, SORT_OPTIONS, OPEN_STATUSES, MANUAL_COUNT, MODAL_TITLES, SAVEABLE_MODALS, LARGE_MODALS, NEEDS_LOAD_MODALS, COMP_TYPES, WORK_TYPES, POSTED_WITHIN, JOB_TYPES, RACE_OPTIONS, CARD_COLORS, BONUS_COLOR, KIND_LABELS, STAR_FIELDS, QUESTIONS, BASIC_TOTAL, PREF_FIELDS, AUTOMATION_OPTIONS, RESUME_COLORS, SETTINGS_SECTIONS, SEC, SOURCE_FIELDS, AI_PROVIDERS, AI_KEY_PLACEHOLDERS, AI_MODELS, AI_TEST_LABELS, EMAIL_DOMAINS, EMAIL_OTHER
   } from './data/constants';
 
   // ---- Core state ----
@@ -64,7 +56,6 @@
   });
 
   // Autosave. Each effect reads its whole state via $state.snapshot, so any nested change re-runs it.
-  // aiTest is a transient result, so it is never persisted.
   $effect(() => { if (loaded) Store.saveSoon('prefs', $state.snapshot(prefs)); });
   $effect(() => { if (loaded) Store.saveSoon('settings', { ...$state.snapshot(settings), aiTest: 'idle' }); });
   $effect(() => { if (loaded) Store.saveSoon('personal', $state.snapshot(personal)); });
