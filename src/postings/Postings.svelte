@@ -2263,7 +2263,7 @@ async function performWipe(target) {
                 </div>
                 {#if settings.emailAccess}
                   <div class="st-it stack cond">
-                    <div class="st-tx"><b>Dummy email address</b></div>
+                    <div class="st-tx"><b>Email address</b></div>
                     <div class="st-ct">
                       <div class="st-em">
                         <input class="st-input st-em-user" bind:value={settings.emailUser} placeholder="your.dummy.name" aria-label="Email username" />
@@ -2286,7 +2286,7 @@ async function performWipe(target) {
                     {@render stSwitch('readOnStartup', 'Read emails on startup')}
                   </div>
                   <div class="st-it stack cond">
-                    <div class="st-tx"><b>Look back</b><small>How far back to scan for replies.</small></div>
+                    <div class="st-tx"><b>Stay up to date</b><small>How far back the AI should read emails.</small></div>
                     <div class="st-ct">{@render stSeg('scanDays', ['7 days', '30 days', '90 days'])}</div>
                   </div>
                   <div class="st-it cond">
