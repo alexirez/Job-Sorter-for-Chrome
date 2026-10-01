@@ -921,15 +921,17 @@
 
   // One flat list of every title, colored by the resume it belongs to.
   let coverageChips = $derived(
-    resumes.flatMap((r, i) =>
-      resumeTitles(r).map((t, j) => ({
-        key: `${r.id}-${j}`,
-        title: t,
-        resume: r,
-        color: RESUME_COLORS[i % RESUME_COLORS.length]
-      }))
-    )
-  );
+    resumes
+      .flatMap((r, i) =>
+        resumeTitles(r).map((t, j) => ({
+          key: `${r.id}-${j}`,
+          title: t,
+          resume: r,
+          color: RESUME_COLORS[i % RESUME_COLORS.length]
+        }))
+      )
+      .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }))
+   );
 
   let resumeError = $state('');
   let dragOverId = $state(null);
