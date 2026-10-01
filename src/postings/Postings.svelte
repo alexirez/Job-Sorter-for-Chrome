@@ -5,7 +5,7 @@
     applyIcon, uploadIcon, chevronsIcon, userIcon, preferencesIcon,
     settingsIcon, fileTextIcon, slidersIcon, boltIcon, eyeOffIcon,
     starIcon, warnTriIcon, shieldCheckIcon, syncIcon,
-    closeIcon, closeThinIcon, githubIcon
+    closeIcon, githubIcon
   } from '../ui/assets/icons';
   import './postings.css';
   import { cubicOut } from 'svelte/easing';
@@ -1371,7 +1371,7 @@
             <span>{MODAL_TITLES[activeModal]}</span>
           {/if}
           <button class="icon-btn filter-popup-close" onclick={closeModal} aria-label="Close">
-            {@html closeThinIcon}
+            {@html closeIcon}
           </button>
         </div>
 
