@@ -4,7 +4,8 @@
      questionMarkIcon, filterIcon, chevronIcon, deleteIcon, archiveIcon,
      applyIcon, uploadIcon, chevronsIcon, userIcon, preferencesIcon,
      settingsIcon, fileTextIcon, slidersIcon, boltIcon, eyeOffIcon, 
-     starIcon, warnTriIcon
+     starIcon, warnTriIcon, databaseIcon, sparklesIcon, mailIcon, bellIcon, 
+     shieldIcon, shieldCheckIcon
   } from '../ui/assets/icons';
   import './postings.css';
   import { cubicOut } from 'svelte/easing';
@@ -100,7 +101,7 @@
     help: 'Help'
   };
   const SAVEABLE_MODALS = ['personal', 'preferences', 'resumes'];
-  const LARGE_MODALS = ['personal', 'preferences', 'resumes'];
+  const LARGE_MODALS = ['personal', 'preferences', 'resumes', 'settings'];
 
   let activeModal = $state(null); // a key of MODAL_TITLES, or null when nothing is open
   let modalNode = $state(null);
@@ -998,6 +999,144 @@
     if (r) r.fileName = '';
   }
 
+  // ---- Settings ----
+  const SETTINGS_SECTIONS = [
+    { id: 'src',    title: 'Sources',    color: 'var(--new)',      icon: databaseIcon, desc: 'API tokens for job boards. Tokens stay on this device.' },
+    { id: 'ai',     title: 'AI Model',   color: 'var(--applied)',  icon: sparklesIcon, desc: 'Pick a provider, connect it, and choose what AI is allowed to do.' },
+    { id: 'email',  title: 'Email',      color: 'var(--shortlist)', icon: mailIcon,    desc: 'Let the extension follow your applications through your inbox.' },
+    { id: 'auto',   title: 'Automation', color: 'var(--bonus)',    icon: boltIcon,     desc: 'How much the autofiller and fetcher do on their own.' },
+    { id: 'alerts', title: 'Alerts',     color: 'var(--new)',      icon: bellIcon,     desc: 'Choose what is worth interrupting you for.' },
+    { id: 'data',   title: 'Data',       color: 'var(--rejected)', icon: shieldIcon,   desc: 'Storage, cleanup and your exports.' }
+  ];
+  const SEC = Object.fromEntries(SETTINGS_SECTIONS.map((s) => [s.id, s]));
+
+  const SOURCE_FIELDS = [
+    { key: 'adzuna',  label: 'Adzuna',            desc: 'Job listings API',      placeholder: 'paste app key' },
+    { key: 'jsearch', label: 'JSearch (RapidAPI)', desc: 'Aggregated listings',   placeholder: 'paste RapidAPI key' },
+    { key: 'usajobs', label: 'USAJobs',           desc: 'US federal positions',  placeholder: 'paste API key' }
+  ];
+  const AI_PROVIDERS = ['Anthropic', 'OpenAI', 'Google', 'Ollama (local)', 'Custom'];
+  const AI_KEY_PLACEHOLDERS = ['sk-ant-...', 'sk-...', 'AIza...', '', 'paste token'];
+  // Suggestions only, since the field is free text. Verify names against each provider's docs.
+  const AI_MODELS = [['claude-haiku-4-5-20251001', 'claude-sonnet-5-5'], ['gpt-4o-mini'], ['gemini-2.0-flash'], ['llama3.1'], []];
+  const AI_TEST_LABELS = {
+    idle: ['Not tested', ''],
+    busy: ['Testing…', ''],
+    ok:   ['Connected · model replied', 'ok'],
+    fail: ["Couldn't connect. Check key and model.", 'bad']
+  };
+  const EMAIL_DOMAINS = ['gmail.com', 'outlook.com', 'yahoo.com', 'proton.me', 'icloud.com', 'Other…'];
+  const EMAIL_OTHER = EMAIL_DOMAINS.length - 1;
+
+  // TODO: persist this (chrome.storage.local, NOT sync, because tokens are secrets) and load it on mount.
+  let settings = $state({
+    merge: true,
+    tokens: { adzuna: '', jsearch: '', usajobs: '', ai0: '', ai1: '', ai2: '', ai4: '' },
+    customSources: [], // { id, name, token }
+    aiProvider: 0, aiUrl: 'http://localhost:11434', aiModel: AI_MODELS[0][0], aiTest: 'idle',
+    aiOpen: true, aiFilter: true, aiPick: true,
+    emailAccess: false, emailUser: '', emailDomain: 0, emailCustom: '',
+    readOnStartup: true, scanDays: 1, autoStatus: true,
+    noMatch: 0, dailyLimit: 25, autoFetch: 2, pauseCaptcha: true, skipApplied: true,
+    notif: true, nReview: true, nMatch: true, nSkip: true, digest: 0,
+    quiet: false, quietFrom: '22:00', quietTo: '07:00',
+    deleteOld: true, deleteDays: 60, keepApplied: true, storeRaw: true
+  });
+  let showKeys = $state({});
+
+  // Hero meter: [count, total, label] per section
+  const onCount = (keys) => keys.filter((k) => settings[k]).length;
+  let settingsMeter = $derived.by(() => {
+    const tokens = [...SOURCE_FIELDS.map((f) => settings.tokens[f.key]), ...settings.customSources.map((c) => c.token)];
+    return {
+      src:    [tokens.filter((v) => (v ?? '').trim()).length, tokens.length, 'connected'],
+      ai:     [settings.aiTest === 'ok' ? 1 : 0, 1, 'connected'],
+      email:  [onCount(['emailAccess', 'readOnStartup', 'autoStatus']), 3, 'on'],
+      auto:   [onCount(['pauseCaptcha', 'skipApplied']), 2, 'on'],
+      alerts: [onCount(['notif', 'nReview', 'nMatch', 'nSkip', 'quiet']), 5, 'on'],
+      data:   [onCount(['deleteOld', 'keepApplied', 'storeRaw']), 3, 'on']
+    };
+  });
+
+  function addSource() {
+    settings.customSources.push({ id: crypto.randomUUID(), name: '', token: '' });
+  }
+  function removeSource(id) {
+    settings.customSources = settings.customSources.filter((c) => c.id !== id);
+  }
+
+  function pickProvider(i) {
+    settings.aiProvider = i;
+    settings.aiModel = AI_MODELS[i][0] ?? '';
+  }
+  // Any change to what would be tested invalidates the last result.
+  $effect(() => {
+    settings.aiProvider; settings.aiModel; settings.aiUrl;
+    settings.tokens['ai' + settings.aiProvider];
+    settings.aiTest = 'idle';
+  });
+  async function testAiConnection() {
+    settings.aiTest = 'busy';
+    try {
+      // TODO: handle 'ai:test' in the background service worker. It makes the request, so keys never reach page scripts.
+      const response = await chrome.runtime.sendMessage({
+        type: 'ai:test',
+        provider: settings.aiProvider,
+        model: settings.aiModel,
+        baseUrl: settings.aiUrl,
+        key: settings.tokens['ai' + settings.aiProvider]
+      });
+      settings.aiTest = response?.ok ? 'ok' : 'fail';
+    } catch {
+      settings.aiTest = 'fail';
+    }
+  }
+
+  function clampDeleteDays(e) {
+    const n = Math.round(Number(e.currentTarget.value));
+    settings.deleteDays = Math.min(365, Math.max(1, n || 60));
+    e.currentTarget.value = settings.deleteDays;
+  }
+  // TODO: wire these to real background messages.
+  function exportData() {}
+  function clearCache() {}
+
+  // Scroll-spy: the section overlapping the top quarter of the panel is the active one.
+  let settingsPanelNode = $state(null);
+  let settingsActive = $state('src');
+  let settingsLock = false; // ignore the observer while a click-to-jump scroll is animating
+  let settingsLockTimeout;
+
+  $effect(() => {
+    if (activeModal !== 'settings' || !settingsPanelNode) return;
+    const visible = new Set();
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target.dataset.sec);
+          else visible.delete(e.target.dataset.sec);
+        }
+        if (settingsLock) return;
+        const first = SETTINGS_SECTIONS.find((s) => visible.has(s.id));
+        if (first) settingsActive = first.id;
+      },
+      { root: settingsPanelNode, rootMargin: '0px 0px -75% 0px' }
+    );
+    settingsPanelNode.querySelectorAll('[data-sec]').forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  });
+
+  function jumpToSection(id) {
+    const el = settingsPanelNode?.querySelector(`[data-sec="${id}"]`);
+    if (!el) return;
+    settingsActive = id;
+    settingsLock = true;
+    clearTimeout(settingsLockTimeout);
+    settingsLockTimeout = setTimeout(() => (settingsLock = false), 700);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    settingsPanelNode.scrollTo({ top: el.offsetTop - 2, behavior: reduce ? 'auto' : 'smooth' });
+  }
+
 function requestWipe(target) {
   if (wipeTarget !== target) {
     wipeTarget = target;
@@ -1169,6 +1308,38 @@ async function performWipe(target) {
           </div>
         </div>
       {/if}
+    </div>
+  {/snippet}
+  {#snippet stSwitch(key, label)}
+    <button type="button" class="st-sw" class:on={settings[key]} role="switch" aria-checked={settings[key]} aria-label={label}
+      onclick={() => (settings[key] = !settings[key])}></button>
+  {/snippet}
+
+  {#snippet stSeg(key, options, onpick)}
+    <div class="st-sg" role="group">
+      {#each options as o, n}
+        <button type="button" class="st-so" class:on={settings[key] === n} aria-pressed={settings[key] === n}
+          onclick={() => (onpick ? onpick(n) : (settings[key] = n))}>{o}</button>
+      {/each}
+    </div>
+  {/snippet}
+
+  {#snippet stToken(holder, key, id, placeholder, label)}
+    <div class="st-tok">
+      <input class="st-input mono" type={showKeys[id] ? 'text' : 'password'} bind:value={holder[key]}
+        {placeholder} aria-label={label} autocomplete="off" spellcheck="false" />
+      <button type="button" class="st-eb" onclick={() => (showKeys[id] = !showKeys[id])}>{showKeys[id] ? 'Hide' : 'Show'}</button>
+      <span class="st-stp" class:ok={(holder[key] ?? '').trim() !== ''}>{(holder[key] ?? '').trim() ? 'Key set' : 'Not set'}</span>
+    </div>
+  {/snippet}
+
+  {#snippet stHero(s)}
+    {@const m = settingsMeter[s.id]}
+    <div class="st-hero">
+      <b>{s.title}</b>
+      <p>{s.desc}</p>
+      <div class="st-meter"><i style="width: {m[1] ? (m[0] / m[1]) * 100 : 0}%"></i></div>
+      <small>{m[0]} OF {m[1]} {m[2].toUpperCase()}</small>
     </div>
   {/snippet}
 
@@ -1999,8 +2170,238 @@ async function performWipe(target) {
           <!-- TODO: apply modal content -->
         
         {:else if activeModal === 'settings'}
-          <!-- TODO: settings modal content -->
+          <div class="st-body">
+            <nav class="st-rail" aria-label="Settings sections">
+              {#each SETTINGS_SECTIONS as s}
+                <button type="button" class="st-rb" class:on={settingsActive === s.id} style="--c: {s.color}"
+                  aria-current={settingsActive === s.id ? 'true' : undefined} onclick={() => jumpToSection(s.id)}>
+                  <span class="st-ic">{@html s.icon}</span>{s.title}
+                </button>
+              {/each}
+            </nav>
 
+            <div class="st-panel" bind:this={settingsPanelNode}>
+
+              <!-- Sources -->
+              <section class="st-sec" data-sec="src" style="--c: var(--new)">
+                {@render stHero(SEC.src)}
+                <div class="st-it">
+                  <div class="st-tx"><b>Merge duplicate postings</b><small>The same job from several boards shows once.</small></div>
+                  {@render stSwitch('merge', 'Merge duplicate postings')}
+                </div>
+                {#each SOURCE_FIELDS as f}
+                  <div class="st-it stack">
+                    <div class="st-tx"><b>{f.label}</b><small>{f.desc}</small></div>
+                    <div class="st-ct">{@render stToken(settings.tokens, f.key, f.key, f.placeholder, `${f.label} token`)}</div>
+                  </div>
+                {/each}
+                {#each settings.customSources as c (c.id)}
+                  <div class="st-it stack">
+                    <div class="st-name-row">
+                      <input class="st-input" bind:value={c.name} placeholder="Source name" aria-label="Custom source name" />
+                      <button type="button" class="st-rm" onclick={() => removeSource(c.id)} aria-label="Remove source">×</button>
+                    </div>
+                    <div class="st-ct">{@render stToken(c, 'token', c.id, 'paste token', 'Custom source token')}</div>
+                  </div>
+                {/each}
+                <button type="button" class="st-add" onclick={addSource}>+ Add a source</button>
+              </section>
+
+              <!-- AI Model -->
+              <section class="st-sec" data-sec="ai" style="--c: var(--applied)">
+                {@render stHero(SEC.ai)}
+                <div class="st-it stack">
+                  <div class="st-tx"><b>Provider</b><small>Ollama runs on your machine, so nothing leaves your device.</small></div>
+                  <div class="st-ct">{@render stSeg('aiProvider', AI_PROVIDERS, pickProvider)}</div>
+                </div>
+                {#if settings.aiProvider !== 3}
+                  <div class="st-it stack">
+                    <div class="st-tx"><b>API key</b><small>Stored only on this device.</small></div>
+                    <div class="st-ct">{@render stToken(settings.tokens, `ai${settings.aiProvider}`, `ai${settings.aiProvider}`, AI_KEY_PLACEHOLDERS[settings.aiProvider], 'API key')}</div>
+                  </div>
+                {/if}
+                {#if settings.aiProvider >= 3}
+                  <div class="st-it stack">
+                    <div class="st-tx"><b>Base URL</b><small>Where the model is reachable.</small></div>
+                    <div class="st-ct"><input class="st-input" bind:value={settings.aiUrl} placeholder="http://localhost:11434" aria-label="Base URL" /></div>
+                  </div>
+                {/if}
+                <div class="st-it stack">
+                  <div class="st-tx"><b>Model</b><small>Type a name or pick a suggestion.</small></div>
+                  <div class="st-ct">
+                    <input class="st-input" list="st-models" bind:value={settings.aiModel} placeholder="model name" aria-label="Model" />
+                    <datalist id="st-models">{#each AI_MODELS[settings.aiProvider] as m}<option value={m}></option>{/each}</datalist>
+                  </div>
+                </div>
+                <div class="st-it stack">
+                  <div class="st-tx"><b>Connection</b><small>Sends one tiny request to check your key and model.</small></div>
+                  <div class="st-ct st-tst">
+                    <button type="button" class="st-eb" onclick={testAiConnection} disabled={settings.aiTest === 'busy'}>Test connection</button>
+                    <span class="st-stp {AI_TEST_LABELS[settings.aiTest][1]}">{AI_TEST_LABELS[settings.aiTest][0]}</span>
+                  </div>
+                </div>
+                <div class="st-it">
+                  <div class="st-tx"><b>Answer open-ended questions</b><small>Follows your Preferences choices.</small></div>
+                  {@render stSwitch('aiOpen', 'Answer open-ended questions')}
+                </div>
+                <div class="st-it">
+                  <div class="st-tx"><b>Power the AI filter</b><small>Classifies postings against your prompt.</small></div>
+                  {@render stSwitch('aiFilter', 'Power the AI filter')}
+                </div>
+                <div class="st-it">
+                  <div class="st-tx"><b>Pick a resume when unsure</b><small>Used when Preferences say let AI decide.</small></div>
+                  {@render stSwitch('aiPick', 'Pick a resume when unsure')}
+                </div>
+              </section>
+
+              <!-- Email -->
+              <section class="st-sec" data-sec="email" style="--c: var(--shortlist)">
+                {@render stHero(SEC.email)}
+                <div class="st-it">
+                  <div class="st-tx"><b>Email access</b><small>Lets Job Sorter read replies to your applications.</small></div>
+                  {@render stSwitch('emailAccess', 'Email access')}
+                </div>
+                {#if settings.emailAccess}
+                  <div class="st-it stack cond">
+                    <div class="st-tx"><b>Dummy email address</b></div>
+                    <div class="st-ct">
+                      <div class="st-em">
+                        <input class="st-input st-em-user" bind:value={settings.emailUser} placeholder="your.dummy.name" aria-label="Email username" />
+                        <span class="st-at">@</span>
+                        <select class="st-input" bind:value={settings.emailDomain} aria-label="Email provider">
+                          {#each EMAIL_DOMAINS as d, n}<option value={n}>{d}</option>{/each}
+                        </select>
+                        {#if settings.emailDomain === EMAIL_OTHER}
+                          <input class="st-input" bind:value={settings.emailCustom} placeholder="yourdomain.com" aria-label="Custom domain" />
+                        {/if}
+                      </div>
+                      <div class="st-callout">
+                        {@html shieldCheckIcon}
+                        <span><b>Use a dummy email.</b> Recruiters and job boards share and leak addresses, so a throwaway made just for job hunting keeps your main inbox free of spam.</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="st-it cond">
+                    <div class="st-tx"><b>Read emails on startup</b><small>Checks for new replies whenever the extension opens.</small></div>
+                    {@render stSwitch('readOnStartup', 'Read emails on startup')}
+                  </div>
+                  <div class="st-it stack cond">
+                    <div class="st-tx"><b>Look back</b><small>How far back to scan for replies.</small></div>
+                    <div class="st-ct">{@render stSeg('scanDays', ['7 days', '30 days', '90 days'])}</div>
+                  </div>
+                  <div class="st-it cond">
+                    <div class="st-tx"><b>Update status from replies</b><small>Marks postings Rejected or Applied for you.</small></div>
+                    {@render stSwitch('autoStatus', 'Update status from replies')}
+                  </div>
+                {/if}
+              </section>
+
+              <!-- Automation -->
+              <section class="st-sec" data-sec="auto" style="--c: var(--bonus)">
+                {@render stHero(SEC.auto)}
+                <div class="st-it stack">
+                  <div class="st-tx"><b>When no resume matches</b><small>Use your fallback resume, or skip the posting and get notified.</small></div>
+                  <div class="st-ct">{@render stSeg('noMatch', ['Use fallback resume', 'Skip and notify me'])}</div>
+                </div>
+                <div class="st-it stack">
+                  <div class="st-tx"><b>Max applications per day</b><small>Keeps your activity looking human. 0 means no limit.</small></div>
+                  <div class="st-ct">
+                    <div class="st-rg">
+                      <input type="range" min="0" max="100" bind:value={settings.dailyLimit} aria-label="Max applications per day" />
+                      <span class="st-val">{settings.dailyLimit === 0 ? 'No limit' : `${settings.dailyLimit} / day`}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="st-it stack">
+                  <div class="st-tx"><b>Auto-fetch jobs</b></div>
+                  <div class="st-ct">{@render stSeg('autoFetch', ['Off', 'Hourly', 'Every 6h', 'Daily'])}</div>
+                </div>
+                <div class="st-it">
+                  <div class="st-tx"><b>Pause on CAPTCHA</b><small>Stops and asks you instead of guessing.</small></div>
+                  {@render stSwitch('pauseCaptcha', 'Pause on CAPTCHA')}
+                </div>
+                <div class="st-it">
+                  <div class="st-tx"><b>Skip companies I applied to</b><small>Avoids double applications.</small></div>
+                  {@render stSwitch('skipApplied', 'Skip companies I applied to')}
+                </div>
+              </section>
+
+              <!-- Alerts -->
+              <section class="st-sec" data-sec="alerts" style="--c: var(--new)">
+                {@render stHero(SEC.alerts)}
+                <div class="st-it">
+                  <div class="st-tx"><b>Desktop notifications</b><small>Show alerts outside the browser.</small></div>
+                  {@render stSwitch('notif', 'Desktop notifications')}
+                </div>
+                {#if settings.notif}
+                  <div class="st-it cond">
+                    <div class="st-tx"><b>Application needs review</b><small>When the autofiller is unsure.</small></div>
+                    {@render stSwitch('nReview', 'Application needs review')}
+                  </div>
+                  <div class="st-it cond">
+                    <div class="st-tx"><b>New postings match my titles</b><small>Based on your resume titles.</small></div>
+                    {@render stSwitch('nMatch', 'New postings match my titles')}
+                  </div>
+                  <div class="st-it cond">
+                    <div class="st-tx"><b>A posting was skipped</b><small>Such as no resume match.</small></div>
+                    {@render stSwitch('nSkip', 'A posting was skipped')}
+                  </div>
+                {/if}
+                <div class="st-it stack">
+                  <div class="st-tx"><b>Activity summary</b></div>
+                  <div class="st-ct">{@render stSeg('digest', ['Off', 'Daily', 'Weekly'])}</div>
+                </div>
+                {#if settings.notif}
+                  <div class="st-it cond">
+                    <div class="st-tx"><b>Quiet hours</b><small>Hold notifications overnight.</small></div>
+                    {@render stSwitch('quiet', 'Quiet hours')}
+                  </div>
+                  {#if settings.quiet}
+                    <div class="st-it stack cond">
+                      <div class="st-tx"><b>Quiet hours window</b></div>
+                      <div class="st-ct st-tm">
+                        <input class="st-input" type="time" bind:value={settings.quietFrom} aria-label="Quiet hours start" /> to
+                        <input class="st-input" type="time" bind:value={settings.quietTo} aria-label="Quiet hours end" />
+                      </div>
+                    </div>
+                  {/if}
+                {/if}
+              </section>
+
+              <!-- Data -->
+              <section class="st-sec" data-sec="data" style="--c: var(--rejected)">
+                {@render stHero(SEC.data)}
+                <div class="st-it">
+                  <div class="st-tx"><b>Delete old postings</b><small>Automatically remove postings after a set time.</small></div>
+                  {@render stSwitch('deleteOld', 'Delete old postings')}
+                </div>
+                {#if settings.deleteOld}
+                  <div class="st-it cond">
+                    <div class="st-tx"><b>Time before deletion</b></div>
+                    <span class="st-nm">
+                      <input class="st-input" type="number" min="1" max="365" value={settings.deleteDays} onchange={clampDeleteDays} aria-label="Days before deletion" /> days
+                    </span>
+                  </div>
+                  <div class="st-it cond">
+                    <div class="st-tx"><b>Keep applied postings</b><small>Never auto-delete ones you applied to.</small></div>
+                    {@render stSwitch('keepApplied', 'Keep applied postings')}
+                  </div>
+                {/if}
+                <div class="st-it">
+                  <div class="st-tx"><b>Store raw posting data</b><small>Needed for the "?" viewer. Turn off to save space.</small></div>
+                  {@render stSwitch('storeRaw', 'Store raw posting data')}
+                </div>
+                <div class="st-it stack">
+                  <div class="st-tx"><b>Your data</b></div>
+                  <div class="st-ct st-acts">
+                    <button type="button" class="st-eb" onclick={exportData}>Export data</button>
+                    <button type="button" class="st-eb" onclick={clearCache}>Clear cache</button>
+                  </div>
+                </div>
+              </section>
+
+            </div>
+          </div>
         {:else if activeModal === 'help'}
           <div class="help-hero">
             <span class="help-gh-badge">
