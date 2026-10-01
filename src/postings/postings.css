@@ -358,9 +358,28 @@ body {
 .raw-btn { flex-shrink: 0; width: 26px; height: 26px; }
 .job-detail-body { flex: 1; min-width: 0; }
 .job-detail-line { font-size: 12px; color: var(--ink-muted); margin: 0 0 6px; line-height: 1.5; }
-.job-description { font-size: 13px; margin: 0; line-height: 1.6; white-space: pre-line; max-width: 78ch; }
+.job-description { font-size: 13px; margin: 0; line-height: 1.6; white-space: pre-line; }
 .job-description.muted { color: var(--ink-muted); font-style: italic; }
 .raw-json { margin-top: 10px; padding: 10px; background: var(--border-soft); border-radius: 6px; font-size: 11px; overflow-x: auto; }
+.job-detail-cols { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px; }
+
+/* resize: horizontal gives the drag handle in the bottom-right corner */
+.job-desc-box {
+  flex: 0 0 auto; box-sizing: border-box;
+  width: 58%; min-width: 220px; max-width: calc(100% - 230px); max-height: 280px;
+  overflow: auto; resize: horizontal;
+  padding: 10px 12px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--paper);
+}
+
+.job-info { flex: 1 1 200px; min-width: 0; margin: 0; }
+.job-info-row { display: grid; grid-template-columns: 92px 1fr; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border-soft); font-size: 12.5px; }
+.job-info-row:first-child { padding-top: 0; }
+.job-info-row:last-child { border-bottom: 0; }
+.job-info dt { padding-top: 1px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-muted); }
+.job-info dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.job-info a { color: var(--new); font-weight: 600; text-decoration: none; }
+.job-info a:hover { text-decoration: underline; }
+
 .note { font-size: 13px; color: var(--ink-muted); }
 .note-empty { text-align: center; font-size: 15px; margin: 0; padding-top: 12vh; }
 .end-of-list { text-align: center; font-size: 12px; color: var(--ink-muted); padding: 20px 0; }

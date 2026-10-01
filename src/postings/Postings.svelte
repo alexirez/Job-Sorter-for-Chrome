@@ -541,7 +541,7 @@
   let sortNode = $state(null);
 
   const timeOf = (j) => (j.postedAt ? new Date(j.postedAt).getTime() || 0 : 0);
-  const payOf = (j) => j.salaryMax ?? j.salaryMin ?? -1;
+  const payOf = (j) => annualRange(j)?.hi ?? -1;
   const SORTERS = {
     // matchScore (0–100) is optional until the scoring pass exists; unscored jobs fall back to newest.
     best: (a, b) => (b.matchScore ?? -1) - (a.matchScore ?? -1) || timeOf(b) - timeOf(a),
@@ -559,8 +559,8 @@
     return jobs
       .filter((j) => {
         if (activeStatus !== 'all' && j.status !== activeStatus) return false;
-        if (filters.remoteOnly && j.remote !== true) return false;
-        if (filters.salaryListed && j.salaryMin == null && j.salaryMax == null) return false;
+        if (filters.remoteOnly && j.workType !== 2) return false;
+        if (filters.salaryListed && annualRange(j) == null) return false;
         if (filters.postedThisWeek && timeOf(j) < weekAgo) return false;
         if (q && !`${j.title} ${j.company} ${j.location}`.toLowerCase().includes(q)) return false;
         return true;
@@ -677,11 +677,82 @@
     return `${trimmed}k`;
   }
 
+  // Annualized pay range for sorting, filtering and the pay bar. Hourly-only postings use the hours-per-year constant.
+  function annualRange(job) {
+    let lo = job.minSalary ?? job.maxSalary;
+    let hi = job.maxSalary ?? job.minSalary;
+    if (lo == null) {
+      const hLo = job.minHourly ?? job.maxHourly;
+      const hHi = job.maxHourly ?? job.minHourly;
+      if (hLo == null) return null;
+      lo = hLo * HOURS_PER_YEAR;
+      hi = hHi * HOURS_PER_YEAR;
+    }
+    return { lo, hi };
+  }
+
+  // Short card text. Annual figures use "60k–80k"; hourly-only postings use "25–32/hr".
   function formatSalary(job) {
-    const min = job.salaryMin ?? job.salaryMax;
-    const max = job.salaryMax ?? job.salaryMin;
-    if (min == null) return null;
-    return min === max ? Math.round(min).toLocaleString() : `${formatCompact(min)}–${formatCompact(max)}`;
+    const min = job.minSalary ?? job.maxSalary;
+    const max = job.maxSalary ?? job.minSalary;
+    if (min != null) return min === max ? Math.round(min).toLocaleString() : `${formatCompact(min)}–${formatCompact(max)}`;
+    const hMin = job.minHourly ?? job.maxHourly;
+    const hMax = job.maxHourly ?? job.minHourly;
+    if (hMin == null) return null;
+    const f = (v) => String(Math.round(v * 100) / 100);
+    return `${hMin === hMax ? f(hMin) : `${f(hMin)}–${f(hMax)}`}/hr`;
+  }
+
+  const WORK_TYPE_NAMES = ['Unknown', 'On-site', 'Remote', 'Hybrid'];
+  const titleCase = (s) => String(s).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+  function formatDate(iso) {
+    const d = iso ? new Date(iso) : null;
+    return d && !Number.isNaN(d.getTime())
+      ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      : null;
+  }
+
+  function formatMoney(value, currency, digits = 0) {
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency', currency: currency || 'USD', minimumFractionDigits: 0, maximumFractionDigits: digits
+      }).format(value);
+    } catch { return Math.round(value).toLocaleString(); }
+  }
+
+  function formatRange(min, max, fmt) {
+    const lo = min ?? max;
+    const hi = max ?? min;
+    if (lo == null) return null;
+    return lo === hi ? fmt(lo) : `${fmt(lo)} – ${fmt(hi)}`;
+  }
+
+  function hostOf(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
+  }
+
+  // Rows for the info panel. Anything missing is skipped, so the panel only shows what exists.
+  function detailRows(job) {
+    const rows = [];
+    const add = (label, value, href) => { if (value != null && value !== '') rows.push({ label, value, href }); };
+    add('Company', job.company);
+    add('Location', job.location);
+    add('Work type', job.workType > 0 ? WORK_TYPE_NAMES[job.workType] : null);
+    add('Employment', job.employmentType ? titleCase(job.employmentType) : null);
+    const annual = formatRange(job.minSalary, job.maxSalary, (v) => formatMoney(v, job.currency));
+    const hourly = formatRange(job.minHourly, job.maxHourly, (v) => formatMoney(v, job.currency, 2));
+    add('Salary', annual && `${annual} / year`);
+    add('Hourly', hourly && `${hourly} / hour`);
+    add('Posted', formatDate(job.postedAt));
+    add('Fetched', formatDate(job.fetchedAt));
+    add('Source', job.source);
+    add('Status', job.status ? titleCase(job.status) : null);
+    add('Shortlisted', formatDate(job.shortlistedAt));
+    add('Applied', formatDate(job.appliedAt));
+    add('Filtered out', formatDate(job.filteredOutAt));
+    add('Posting', job.url ? hostOf(job.url) : null, job.url);
+    return rows;
   }
 
   function toggleSelect(id, event) {
@@ -1073,24 +1144,24 @@
               <span class="job-label job-label-{job.status}">{stamp.label}</span>
             {/if}
           </div>
-          <p class="job-meta">{job.company} · {job.location} · posted {job.postedAt}</p>
+          <p class="job-meta">{[job.company, job.location, formatDate(job.postedAt) && `posted ${formatDate(job.postedAt)}`].filter(Boolean).join(' · ')}</p>
         </div>
         <div class="job-salary-col">
           <div class="job-salary">
             {#if salary}
-              <span class="salary-flag" title={job.salaryIsPredicted ? 'Approximated' : 'Explicit'}>{job.salaryIsPredicted ? '~' : '✓'}</span>
+              <span class="salary-flag" title="Listed by the source">✓</span>
               <span class="salary-dollar">$</span>
               <span class="salary-amount">{salary}</span>
             {:else}
-              <span class="salary-flag" title="Approximated">~</span>
               <span class="salary-amount muted">not listed</span>
             {/if}
           </div>
           {#if salary}
-            {@const lo = payPct(job.salaryMin ?? job.salaryMax)}
-            {@const hi = payPct(job.salaryMax ?? job.salaryMin)}
+            {@const range = annualRange(job)}
+            {@const lo = payPct(range.lo)}
+            {@const hi = payPct(range.hi)}
             <div class="pay-bar" aria-hidden="true">
-              <i class="pay-bar-fill" class:predicted={job.salaryIsPredicted} style="left: {lo}%; right: {100 - hi}%;"></i>
+              <i class="pay-bar-fill" style="left: {lo}%; right: {100 - hi}%;"></i>
               {#if appliedFilterState.idealPayEnabled}
                 <em class="pay-bar-ideal" style="left: {payPct(idealAnnual)}%;"></em>
               {/if}
@@ -1111,12 +1182,27 @@
             {@html questionMarkIcon}
           </button>
           <div class="job-detail-body">
-            <p class="job-detail-line">Employment type: {job.employmentType ?? 'unknown'} · Source: {job.source}</p>
-            {#if job.description}
-              <p class="job-description">{job.description}</p>
-            {:else}
-              <p class="job-description muted">No description provided.</p>
-            {/if}
+            <div class="job-detail-cols">
+              <div class="job-desc-box" title="Drag the bottom-right corner to resize">
+                {#if job.description}
+                  <p class="job-description">{job.description}</p>
+                {:else}
+                  <p class="job-description muted">No description provided.</p>
+                {/if}
+              </div>
+              <dl class="job-info">
+                {#each detailRows(job) as row (row.label)}
+                  <div class="job-info-row">
+                    <dt>{row.label}</dt>
+                    <dd>
+                      {#if row.href}
+                        <a href={row.href} target="_blank" rel="noopener noreferrer">{row.value} ↗</a>
+                      {:else}{row.value}{/if}
+                    </dd>
+                  </div>
+                {/each}
+              </dl>
+            </div>
             {#if rawOpenIds.has(job.id)}
               <pre class="raw-json">{formatRaw(job.raw)}</pre>
             {/if}
