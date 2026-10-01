@@ -357,8 +357,8 @@ body {
 .job-detail { border-top: 1px solid var(--border-soft); padding: 12px; display: flex; gap: 10px; }
 .raw-btn { flex-shrink: 0; width: 26px; height: 26px; }
 .job-detail-body { flex: 1; min-width: 0; }
-.job-detail-line { font-size: 12px; color: var(--ink-muted); margin: 0 0 6px; }
-.job-description { font-size: 13px; margin: 0; }
+.job-detail-line { font-size: 12px; color: var(--ink-muted); margin: 0 0 6px; line-height: 1.5; }
+.job-description { font-size: 13px; margin: 0; line-height: 1.6; white-space: pre-line; max-width: 78ch; }
 .job-description.muted { color: var(--ink-muted); font-style: italic; }
 .raw-json { margin-top: 10px; padding: 10px; background: var(--border-soft); border-radius: 6px; font-size: 11px; overflow-x: auto; }
 .note { font-size: 13px; color: var(--ink-muted); }
