@@ -857,16 +857,19 @@
   let showKeys = $state({});
 
   // Hero meter: [count, total, label] per section
-  const onCount = (keys) => keys.filter((k) => settings[k]).length;
+  const onCount = (items) => items.filter((item) => {
+    const [key, parent] = Array.isArray(item) ? item : [item];
+    return settings[key] && (!parent || settings[parent]);
+  }).length;
   let settingsMeter = $derived.by(() => {
     const tokens = [...SOURCE_FIELDS.map((f) => settings.tokens[f.key]), ...settings.customSources.map((c) => c.token)];
     return {
       src:    [tokens.filter((v) => (v ?? '').trim()).length, tokens.length, 'connected'],
       ai:     [settings.aiTest === 'ok' ? 1 : 0, 1, 'connected'],
-      email:  [onCount(['emailAccess', 'readOnStartup', 'autoStatus']), 3, 'on'],
+      email:  [onCount(['emailAccess', ['readOnStartup', 'emailAccess'], ['autoStatus', 'emailAccess']]), 3, 'on'],
       auto:   [onCount(['pauseCaptcha', 'skipApplied']), 2, 'on'],
-      alerts: [onCount(['notif', 'nReview', 'nMatch', 'nSkip', 'quiet']), 5, 'on'],
-      data:   [onCount(['deleteOld', 'keepApplied', 'storeRaw']), 3, 'on']
+      alerts: [onCount(['notif', ['nReview', 'notif'], ['nMatch', 'notif'], ['nSkip', 'notif'], ['quiet', 'notif']]), 5, 'on'],
+      data:   [onCount(['deleteOld', ['keepApplied', 'deleteOld'], 'storeRaw']), 3, 'on']
     };
   });
 
@@ -2075,7 +2078,6 @@
                   <div class="st-tx"><b>Email access</b><small>Lets Job Sorter read replies to your applications.</small></div>
                   {@render stSwitch('emailAccess', 'Email access')}
                 </div>
-                {#if settings.emailAccess}
                   <div class="st-it stack cond">
                     <div class="st-tx"><b>Email address</b></div>
                     <div class="st-ct">
@@ -2095,6 +2097,7 @@
                       </div>
                     </div>
                   </div>
+                  <div class="st-group" class:st-off={!settings.emailAccess} inert={!settings.emailAccess}>
                   <div class="st-it cond">
                     <div class="st-tx"><b>Read emails on startup</b><small>Checks for new replies whenever the extension opens.</small></div>
                     {@render stSwitch('readOnStartup', 'Read emails on startup')}
@@ -2107,7 +2110,7 @@
                     <div class="st-tx"><b>Update status from replies</b><small>Marks postings Rejected or Applied for you.</small></div>
                     {@render stSwitch('autoStatus', 'Update status from replies')}
                   </div>
-                {/if}
+                </div>
               </section>
 
               <!-- Automation -->
@@ -2147,7 +2150,7 @@
                   <div class="st-tx"><b>Desktop notifications</b><small>Show alerts outside the browser.</small></div>
                   {@render stSwitch('notif', 'Desktop notifications')}
                 </div>
-                {#if settings.notif}
+                <div class="st-group" class:st-off={!settings.notif} inert={!settings.notif}>
                   <div class="st-it cond">
                     <div class="st-tx"><b>Application needs review</b><small>When the autofiller is unsure.</small></div>
                     {@render stSwitch('nReview', 'Application needs review')}
@@ -2160,26 +2163,24 @@
                     <div class="st-tx"><b>A posting was skipped</b><small>Such as no resume match.</small></div>
                     {@render stSwitch('nSkip', 'A posting was skipped')}
                   </div>
-                {/if}
+                </div>
                 <div class="st-it stack">
                   <div class="st-tx"><b>Activity summary</b></div>
                   <div class="st-ct">{@render stSeg('digest', ['Off', 'Daily', 'Weekly'])}</div>
                 </div>
-                {#if settings.notif}
+                <div class="st-group" class:st-off={!settings.notif} inert={!settings.notif}>
                   <div class="st-it cond">
                     <div class="st-tx"><b>Quiet hours</b><small>Hold notifications overnight.</small></div>
                     {@render stSwitch('quiet', 'Quiet hours')}
                   </div>
-                  {#if settings.quiet}
-                    <div class="st-it stack cond">
+                  <div class="st-it stack cond" class:st-off={!settings.quiet} inert={!settings.quiet}>
                       <div class="st-tx"><b>Quiet hours window</b></div>
                       <div class="st-ct st-tm">
                         <input class="st-input" type="time" bind:value={settings.quietFrom} aria-label="Quiet hours start" /> to
                         <input class="st-input" type="time" bind:value={settings.quietTo} aria-label="Quiet hours end" />
                       </div>
                     </div>
-                  {/if}
-                {/if}
+                  </div>
               </section>
 
               <!-- Data -->
@@ -2189,7 +2190,7 @@
                   <div class="st-tx"><b>Delete old postings</b><small>Automatically remove postings after a set time.</small></div>
                   {@render stSwitch('deleteOld', 'Delete old postings')}
                 </div>
-                {#if settings.deleteOld}
+                <div class="st-group" class:st-off={!settings.deleteOld} inert={!settings.deleteOld}>
                   <div class="st-it cond">
                     <div class="st-tx"><b>Time before deletion</b></div>
                     <span class="st-nm">
@@ -2200,7 +2201,7 @@
                     <div class="st-tx"><b>Keep applied postings</b><small>Never auto-delete ones you applied to.</small></div>
                     {@render stSwitch('keepApplied', 'Keep applied postings')}
                   </div>
-                {/if}
+                </div>
                 <div class="st-it">
                   <div class="st-tx"><b>Store raw posting data</b><small>Needed for the "?" viewer. Turn off to save space.</small></div>
                   {@render stSwitch('storeRaw', 'Store raw posting data')}

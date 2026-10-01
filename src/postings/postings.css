@@ -954,6 +954,7 @@ body {
   background: #fff; border: 1px solid var(--border-soft); border-left: 4px solid var(--c); border-radius: 10px;
 }
 .st-it.cond { margin-left: 16px; animation: st-reveal 0.22s ease; }
+.st-off { opacity: 0.45; filter: grayscale(1); transition: opacity 0.15s ease, filter 0.15s ease; }
 @keyframes st-reveal { from { opacity: 0; transform: translateY(-4px); } }
 .st-it.stack { flex-wrap: wrap; }
 .st-it.stack .st-ct, .st-it.stack .st-name-row { width: 100%; }
