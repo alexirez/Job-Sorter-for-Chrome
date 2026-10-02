@@ -534,6 +534,20 @@
     return jobs.filter((j) => j.status === key).length;
   }
 
+  // Sources filter: options come from the built-in sources plus any custom ones the user named.
+  let sourceSearch = $state('');
+  let sourceOptions = $derived([
+    ...SOURCE_FIELDS.map((f) => ({ key: f.key, label: f.label })),
+    ...settings.customSources.filter((c) => c.name.trim()).map((c) => ({ key: c.id, label: c.name.trim() }))
+  ]);
+  let visibleSources = $derived(
+    sourceOptions.filter((o) => o.label.toLowerCase().includes(sourceSearch.trim().toLowerCase()))
+  );
+  function toggleSource(key) {
+    const p = draftFilterState.sources.picked;
+    draftFilterState.sources.picked = p.includes(key) ? p.filter((k) => k !== key) : [...p, key];
+  }
+
   let searchQuery = $state('');
 
   let sortBy = $state('best');
@@ -1095,7 +1109,6 @@
       <span class="pf-head-icon" aria-hidden="true">{@html icon}</span>{title}
     </div>
   {/snippet}
-
   {#snippet prefPill(key)}
     <span
       class="pf-pill"
@@ -1107,7 +1120,14 @@
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cyclePref(key); } }}
     >{prefLabel(key)}</span>
   {/snippet}
-
+  {#snippet fsHead(title, badge)}
+    <summary class="fs-head">
+      <span class="fs-dot" aria-hidden="true"></span>
+      <b>{title}</b>
+      <em>{badge}</em>
+      <span class="fs-chev" aria-hidden="true">{@html chevronIcon}</span>
+    </summary>
+  {/snippet}
   {#snippet jobCard(job, variant, rank)}
     {@const stamp = stampFor(job)}
     {@const salary = formatSalary(job)}
@@ -1465,15 +1485,10 @@
         </div>
 
         {#if activeModal === 'filters'}
-          <div class="filter-sections">
-            <div class="filter-section">
-              <div class="filter-section-header">
-                <span>Posted within</span>
-                <span class="filter-section-summary">
-                  {POSTED_WITHIN.find((o) => o.key === draftFilterState.postedWithin)?.label}
-                </span>
-              </div>
-              <div class="filter-section-body">
+          <div class="fl-body">
+            <details class="fs" open style="--c: var(--new)">
+              {@render fsHead('Posted within', POSTED_WITHIN.find((o) => o.key === draftFilterState.postedWithin)?.label)}
+              <div class="fs-body">
                 <div class="pill-row">
                   {#each POSTED_WITHIN as opt}
                     <button class="pill-toggle" class:active={draftFilterState.postedWithin === opt.key} onclick={() => (draftFilterState.postedWithin = opt.key)}>
@@ -1482,16 +1497,11 @@
                   {/each}
                 </div>
               </div>
-            </div>
+            </details>
 
-            <div class="filter-section">
-              <div class="filter-section-header">
-                <span>Compensation</span>
-                <span class="filter-section-summary">
-                  {draftFilterState.compType === 'salary' ? 'Salary' : 'Hourly'}: {compBounds().prefix}{formatComp(compMinValue())}&ndash;{compBounds().prefix}{formatComp(compMaxValue())}
-                </span>
-              </div>
-              <div class="filter-section-body">
+            <details class="fs" open style="--c: var(--bonus)">
+              {@render fsHead('Compensation', `${compBounds().prefix}${formatComp(compMinValue())}–${compBounds().prefix}${formatComp(compMaxValue())}`)}
+              <div class="fs-body">
                 <div class="pill-row">
                   <button class="pill-toggle comp-type-toggle" class:active={draftFilterState.compType === 'salary'} onclick={() => setCompType('salary')}>Salary</button>
                   <button class="pill-toggle comp-type-toggle" class:active={draftFilterState.compType === 'hourly'} onclick={() => setCompType('hourly')}>Hourly</button>
@@ -1568,16 +1578,11 @@
                   <p class="filter-hint">Drag the marker to influence sort, not filtering. Currently {compBounds().prefix}{formatComp(draftFilterState.idealPay)}.</p>
                 {/if}
               </div>
-            </div>
+            </details>
 
-            <div class="filter-section">
-              <div class="filter-section-header">
-                <span>Work type</span>
-                <span class="filter-section-summary">
-                  {Object.values(draftFilterState.workType).every(Boolean) ? 'All included' : `${Object.values(draftFilterState.workType).filter(Boolean).length} of 4`}
-                </span>
-              </div>
-              <div class="filter-section-body">
+            <details class="fs" open style="--c: var(--shortlist)">
+              {@render fsHead('Work type', Object.values(draftFilterState.workType).every(Boolean) ? 'All' : `${Object.values(draftFilterState.workType).filter(Boolean).length} of 4`)}
+              <div class="fs-body">
                 <div class="work-type-grid">
                   {#each WORK_TYPES as wt}
                     <label class="work-type-item">
@@ -1587,16 +1592,11 @@
                   {/each}
                 </div>
               </div>
-            </div>
+            </details>
 
-            <div class="filter-section">
-              <div class="filter-section-header">
-                <span>Keywords</span>
-                <span class="filter-section-summary">
-                  {draftFilterState.includeKeywords.length} include, {draftFilterState.excludeKeywords.length} exclude
-                </span>
-              </div>
-              <div class="filter-section-body">
+            <details class="fs" open style="--c: var(--applied)">
+              {@render fsHead('Keywords', `${draftFilterState.includeKeywords.length} include, ${draftFilterState.excludeKeywords.length} exclude`)}
+              <div class="fs-body">
                 <label class="keyword-label" for="include-kw-input">Include</label>
                 <div class="keyword-input-box">
                   {#each draftFilterState.includeKeywords as kw, i}
@@ -1633,31 +1633,48 @@
                   />
                 </div>
               </div>
-            </div>
+            </details>
 
-            <div class="filter-section">
-              <label class="filter-section-header ai-filter-header">
-                <span>AI filter</span>
-                <span class="toggle-switch" class:on={draftFilterState.aiFilterEnabled}>
-                  <input
-                    type="checkbox"
-                    class="sr-only-checkbox"
-                    checked={draftFilterState.aiFilterEnabled}
-                    onchange={() => (draftFilterState.aiFilterEnabled = !draftFilterState.aiFilterEnabled)}
-                  />
-                </span>
-              </label>
-              {#if draftFilterState.aiFilterEnabled}
-                <div class="filter-section-body">
-                  <textarea
-                    class="ai-filter-textarea"
-                    bind:value={draftFilterState.aiFilterPrompt}
-                    placeholder="e.g. exclude anything requiring a security clearance"
-                  ></textarea>
+            <details class="fs" open style="--c: var(--violet)">
+              {@render fsHead('AI filter', draftFilterState.aiFilterEnabled ? 'On' : 'Off')}
+              <div class="fs-body">
+                <label class="ideal-toggle-row">
+                  <span>Classify postings with an AI model</span>
+                  <span class="toggle-switch" class:on={draftFilterState.aiFilterEnabled}>
+                    <input type="checkbox" class="sr-only-checkbox" checked={draftFilterState.aiFilterEnabled}
+                      onchange={() => (draftFilterState.aiFilterEnabled = !draftFilterState.aiFilterEnabled)} />
+                  </span>
+                </label>
+                {#if draftFilterState.aiFilterEnabled}
+                  <textarea class="ai-filter-textarea" bind:value={draftFilterState.aiFilterPrompt}
+                    placeholder="e.g. exclude anything requiring a security clearance"></textarea>
                   <p class="filter-hint">Sends job descriptions to an AI model to classify against this prompt.</p>
+                {/if}
+              </div>
+            </details>
+            <details class="fs" open style="--c: var(--rejected)">
+              {@render fsHead('Sources', draftFilterState.sources.mode === 'all' ? 'All' : `${draftFilterState.sources.picked.length} of ${sourceOptions.length}`)}
+              <div class="fs-body">
+                <div class="pill-row">
+                  <button class="pill-toggle" class:active={draftFilterState.sources.mode === 'all'} onclick={() => (draftFilterState.sources.mode = 'all')}>All sources</button>
+                  <button class="pill-toggle" class:active={draftFilterState.sources.mode === 'custom'} onclick={() => (draftFilterState.sources.mode = 'custom')}>Custom</button>
                 </div>
-              {/if}
-            </div>
+                {#if draftFilterState.sources.mode === 'custom'}
+                  <div class="src-tools">
+                    <input class="src-search" type="search" bind:value={sourceSearch} placeholder="Search sources…" aria-label="Search sources" />
+                    <button class="chip" onclick={() => (draftFilterState.sources.picked = sourceOptions.map((o) => o.key))}>Select all</button>
+                    <button class="chip" onclick={() => (draftFilterState.sources.picked = [])}>None</button>
+                  </div>
+                  <div class="src-grid">
+                    {#each visibleSources as o (o.key)}
+                      <label><input type="checkbox" checked={draftFilterState.sources.picked.includes(o.key)} onchange={() => toggleSource(o.key)} />{o.label}</label>
+                    {:else}
+                      <p class="filter-hint">No sources match.</p>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            </details>
           </div>
 
           <div class="filter-popup-footer">

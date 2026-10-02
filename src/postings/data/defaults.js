@@ -54,7 +54,8 @@ export const defaultFilterState = () => ({
   includeKeywords: [],
   excludeKeywords: [],
   aiFilterEnabled: false,
-  aiFilterPrompt: ''
+  aiFilterPrompt: '',
+  sources: { mode: 'all', picked: [] },
 });
 
 export const defaultSettings = () => ({

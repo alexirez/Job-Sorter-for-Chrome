@@ -44,7 +44,7 @@ export const MODAL_TITLES = {
   help: 'Help'
 };
 export const SAVEABLE_MODALS = ['personal', 'preferences', 'resumes'];
-export const LARGE_MODALS = ['personal', 'preferences', 'resumes', 'settings'];
+export const LARGE_MODALS = ['personal', 'preferences', 'resumes', 'settings', 'filters'];
 // These read saved data, so they wait until the load finishes.
 export const NEEDS_LOAD_MODALS = ['personal', 'preferences', 'resumes', 'settings'];
 
