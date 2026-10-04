@@ -392,7 +392,7 @@
     if (s.aiFilterEnabled && s.aiFilterPrompt.trim()) {
       const p = s.aiFilterPrompt.trim();
       chips.push({
-        id: 'ai', tone: 'violet', label: `AI: ${p.length > 28 ? p.slice(0, 28) + '…' : p}`,
+        id: 'ai', tone: 'violet', label: `AI: ${p.length > 6 ? p.slice(0, 4) + '…' : p}`,
         remove: () => editApplied((a) => (a.aiFilterEnabled = false))
       });
     }
