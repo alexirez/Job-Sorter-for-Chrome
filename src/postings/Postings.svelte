@@ -19,6 +19,7 @@
 
   // ---- Core state ----
   let jobs = $state([]);
+  let viewingArchive = $state(false);
   let loadingState = $state('loading'); // 'loading' | 'idle' | 'filtering'
   let loadError = $state('');
   let loaded = $state(false); // saved data has been read; autosave and settings modals wait for this
@@ -32,6 +33,13 @@
 
   let removingIds = $state(new Set()); // state for animated deletion
   const STALL_DELETIONS_MS = 400;
+
+  // Loads whichever table we're in into `jobs`.
+  async function loadJobs(archive) {
+    loadingState = 'loading';
+    loadError = '';
+    await loadJobs(false);
+  }
 
   onMount(async () => {
     [prefs, settings, personal, resumes] = await Promise.all([
@@ -815,6 +823,23 @@
     sidebarCollapsed = !sidebarCollapsed;
   }
 
+  // Entering and leaving both reset the view, so filters never carry over between tables.
+  function setViewingArchive(next) {
+    if (viewingArchive === next) return;
+    viewingArchive = next;
+
+    appliedFilterState = defaultFilterState();
+    filters = { remoteOnly: false, salaryListed: false, postedThisWeek: false };
+    searchQuery = '';
+    activeStatus = 'all';
+    selectedIds = new Set();
+    expandedIds = new Set();
+    rawOpenIds = new Set();
+    jobs = []; // so the tile counts don't show the other table's numbers while loading
+
+    loadJobs(next);
+  }
+
   // ---- Resumes ----
   // Resume shape: { id, title, sim: string[], fileName, fb }
 
@@ -1436,7 +1461,7 @@
       <div class="sidebar-divider"></div>
 
       <div class="sidebar-section sidebar-section-plain">
-        <button class="sidebar-btn" title="View archived">
+        <button class="sidebar-btn" title="View archived" onclick={() => setViewingArchive(true)}>
           <span class="sb-ic" style="--ic: var(--bonus)">{@html archiveIcon}</span>
           <span class="sidebar-label">View archived</span>
         </button>
@@ -2401,6 +2426,12 @@
   {/if}
 
   <div class="content-flow" bind:clientHeight={contentH}>
+    {#if viewingArchive}
+      <p class="archive-banner">
+        You're viewing archived postings.
+        <button class="archive-back" onclick={() => setViewingArchive(false)}>Go back</button>
+      </p>
+    {/if}
     {#if loadingState === 'loading'}
       <p class="note note-empty">Loading postings…</p>
     {:else if loadError}
@@ -2459,7 +2490,7 @@
       {/each}
 
       {#if filteredJobs.length === 0}
-        <p class="note note-empty">No postings match the current filters.</p>
+        <p class="note note-empty">{viewingArchive && jobs.length === 0 ? 'No archived postings yet.' : 'No postings match the current filters.'}</p>
       {/if}
       {#if filteredJobs.length > 0}
         <p class="end-of-list" class:hidden={!showEnd} aria-hidden={!showEnd}>You've reached the end.</p>
