@@ -34,11 +34,22 @@
   let removingIds = $state(new Set()); // state for animated deletion
   const STALL_DELETIONS_MS = 400;
 
-  // Loads whichever table we're in into `jobs`.
+  // Loads whichever table we're currently viewing into `jobs`
   async function loadJobs(archive) {
     loadingState = 'loading';
     loadError = '';
-    await loadJobs(false);
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: archive ? 'postings:getArchivedJobs' : 'postings:getAllJobs'
+      });
+      if (viewingArchive !== archive) return;
+      if (!response.ok) throw new Error(response.error);
+      jobs = response.jobs;
+    } catch (err) {
+      if (viewingArchive === archive) loadError = err.message;
+    } finally {
+      if (viewingArchive === archive) loadingState = 'idle';
+    }
   }
 
   onMount(async () => {
@@ -52,15 +63,7 @@
     ensureFallback();
     loaded = true;
 
-    try {
-      const response = await chrome.runtime.sendMessage({ type: 'postings:getAllJobs' });
-      if (!response.ok) throw new Error(response.error);
-      jobs = response.jobs;
-    } catch (err) {
-      loadError = err.message;
-    } finally {
-      loadingState = 'idle';
-    }
+    await loadJobs(false);
   });
 
   // Autosave. Each effect reads its whole state via $state.snapshot, so any nested change re-runs it.
