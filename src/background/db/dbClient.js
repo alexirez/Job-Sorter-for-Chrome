@@ -33,3 +33,7 @@ export const getJobsByStatus = (status) => callDb('getJobsByStatus', status);
 export const updateJobStatus = (id, newStatus) => callDb('updateJobStatus', { id, newStatus });
 export const getAllJobs = () => callDb('getAllJobs');
 export const resetDatabase = () => callDb('resetDatabase');
+export const getArchivedJobs = () => callDb('getArchivedJobs');
+export const archiveJobs = (ids) => callDb('archiveJobs', { ids });
+export const restoreJobs = (ids) => callDb('restoreJobs', { ids });
+export const deleteJobs = (ids, fromArchive = false) => callDb('deleteJobs', { ids, fromArchive });

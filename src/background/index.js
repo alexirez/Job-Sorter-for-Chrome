@@ -1,3 +1,6 @@
+import {
+  getAllJobs, getArchivedJobs, archiveJobs, restoreJobs, deleteJobs, resetDatabase
+} from './db/dbClient.js';
 
 // // temporary test
 
@@ -21,23 +24,27 @@
 
 // testPipeline().catch(err => console.error('Pipeline test failed:', err));
 
+
 // // endtest
 
-import { getAllJobs, resetDatabase, upsertJob, getJobsByStatus } from './db/dbClient.js';
-import { fetchJobs } from '../sources/adzuna.js';
+
+
+
+// Each route returns the extra fields to merge into { ok: true, ... }.
+const routes = {
+  'postings:getAllJobs':      () => getAllJobs().then((jobs) => ({ jobs })),
+  'postings:getArchivedJobs': () => getArchivedJobs().then((jobs) => ({ jobs })),
+  'postings:archiveJobs':     (m) => archiveJobs(m.ids).then(() => ({})),
+  'postings:restoreJobs':     (m) => restoreJobs(m.ids).then(() => ({})),
+  'postings:deleteJobs':      (m) => deleteJobs(m.ids, m.fromArchive).then(() => ({})),
+  'postings:wipeJobs':        () => resetDatabase().then(() => ({}))
+};
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === 'postings:getAllJobs') {
-    getAllJobs()
-      .then((jobs) => sendResponse({ ok: true, jobs }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
-
-  if (message?.type === 'postings:wipeJobs') {
-    resetDatabase()
-      .then(() => sendResponse({ ok: true }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
+  const route = routes[message?.type];
+  if (!route) return; // not ours
+  route(message)
+    .then((extra) => sendResponse({ ok: true, ...extra }))
+    .catch((error) => sendResponse({ ok: false, error: error.message }));
+  return true;
 });

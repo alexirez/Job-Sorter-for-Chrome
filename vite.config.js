@@ -14,11 +14,12 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     modulePreload: false,
-    rollupOptions: {
+    rolldownOptions: {
       input: {
         offscreen: 'src/offscreen/offscreen.html',
         postings: 'postings.html'
-      }
+      },
+      checks: { pluginTimings: false }
     },
     watch: isWatchMode ? { exclude: ['dist/**', 'node_modules/**'] } : null
   }
