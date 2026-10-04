@@ -25,9 +25,9 @@
  * @property {string|null} currency    - ISO code (e.g. "USD"). Null if no salary/hourly data at all.
  *
  * --- Links & timing ---
- * @property {string} url            - Link to the posting (or source's redirect). Always present; a posting without a link is useless
- * @property {string|null} postedAt  - ISO date string. default to 1 month ago if unknown (time changed in settings)
- * @property {string} fetchedAt      - ISO timestamp of when the user pulled the job
+ * @property {string} url              - Link to the posting (or source's redirect). Always present; a posting without a link is useless
+ * @property {string|null} postedAt    - ISO date string. default to 1 month ago if unknown (time changed in settings)
+ * @property {string} fetchedAt        - ISO timestamp of when the user pulled the job
  *
  * --- Pipeline state (ours, not the source's) ---
  * @property {'new'|'filtered_out'|'shortlisted'|'applied'|'rejected'} status
@@ -35,7 +35,8 @@
  * @property {string|null} filteredOutAt  - ISO timestamp of when the AI filter rejected it. Null until it happens
  * @property {string|null} shortlistedAt  - ISO timestamp of when it passed filtering. Null until it happens
  * @property {string|null} appliedAt      - ISO timestamp of when we actually applied. Null until it happens
- *
+ * @property {string|null} [archivedAt]   - ISO timestamp of when it was archived. Only present on rows loaded from archived_jobs
+ * 
  * --- Fallback data ---
  * @property {string|null} raw     - JSON.stringify of the original source response for this posting.
  *

@@ -20,6 +20,7 @@
   // ---- Core state ----
   let jobs = $state([]);
   let viewingArchive = $state(false);
+  let actionError = $state('');
   let loadingState = $state('loading'); // 'loading' | 'idle' | 'filtering'
   let loadError = $state('');
   let loaded = $state(false); // saved data has been read; autosave and settings modals wait for this
@@ -658,6 +659,19 @@
     };
   }
 
+  // Asks the background to change the DB. Rows only animate out if it succeeded.
+  async function sendJobsCommand(type, ids, extra = {}) {
+    actionError = '';
+    try {
+      const response = await chrome.runtime.sendMessage({ type, ids, ...extra });
+      if (!response.ok) throw new Error(response.error);
+      return true;
+    } catch (err) {
+      actionError = err.message;
+      return false;
+    }
+  }
+
   function removeJobs(ids) {
     const idSet = new Set(ids);
     removingIds = new Set([...removingIds, ...idSet]);
@@ -670,9 +684,9 @@
     }, STALL_DELETIONS_MS + 500);
   }
 
-  function deleteJobs(ids) {
-    // chrome.runtime.sendMessage({ type: 'postings:deleteJobs', ids })
-    removeJobs(ids);
+  async function deleteJobs(ids) {
+    const fromArchive = viewingArchive;
+    if (await sendJobsCommand('postings:deleteJobs', ids, { fromArchive })) removeJobs(ids);
   }
 
   // Fixed topbar height is dynamic (the filter bar can wrap), so the list offsets from it.
@@ -767,14 +781,15 @@
     add('Employment', job.employmentType ? titleCase(job.employmentType) : null);
     const annual = formatRange(job.minSalary, job.maxSalary, (v) => formatMoney(v, job.currency));
     const hourly = formatRange(job.minHourly, job.maxHourly, (v) => formatMoney(v, job.currency, 2));
-    add('Salary', annual && `${annual} / year`);
-    add('Hourly', hourly && `${hourly} / hour`);
+    add('Salary', annual && `${annual} / yr`);
+    add('Hourly', hourly && `${hourly} / h`);
     add('Posted', formatDate(job.postedAt));
     add('Fetched', formatDate(job.fetchedAt));
     add('Source', job.source);
     add('Status', job.status ? titleCase(job.status) : null);
     add('Shortlisted', formatDate(job.shortlistedAt));
     add('Applied', formatDate(job.appliedAt));
+    add('Archived', formatDate(job.archivedAt));
     add('Filtered out', formatDate(job.filteredOutAt));
     add('Posting', job.url ? hostOf(job.url) : null, job.url);
     return rows;
@@ -807,16 +822,15 @@
     return { update(next) { node.indeterminate = next; } };
   }
 
-  // TODO: wire these up to real background messages once archive/delete land
-  function archiveSelected() {
-    // chrome.runtime.sendMessage({ type: 'postings:archiveJobs', ids: [...selectedIds] })
-    removeJobs([...selectedIds]);
-    selectedIds = new Set();
+  // In the archive view this same button restores.
+  async function archiveSelected() {
+    const ids = [...selectedIds];
+    const type = viewingArchive ? 'postings:restoreJobs' : 'postings:archiveJobs';
+    if (await sendJobsCommand(type, ids)) removeJobs(ids);
   }
 
   function deleteSelected() {
     deleteJobs([...selectedIds]);
-    selectedIds = new Set();
   }
 
   // TODO: kick off the automation pipeline (call this from the apply modal's start button)
@@ -1335,7 +1349,7 @@
       {#if selectedIds.size > 0}
         <div class="selection-actions">
           <span class="selection-count">{selectedIds.size} selected</span>
-          <button class="icon-btn" onclick={archiveSelected} aria-label="Mark as Old" title="Mark as Old">
+          <button class="icon-btn" onclick={archiveSelected} aria-label={viewingArchive ? 'Restore' : 'Mark as Old'} title={viewingArchive ? 'Restore' : 'Mark as Old'}>
             {@html archiveIcon}
           </button>
           <button class="icon-btn danger" onclick={deleteSelected} aria-label="Delete permanently" title="Delete permanently">
