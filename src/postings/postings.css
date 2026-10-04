@@ -871,8 +871,14 @@ body {
 .fchip-violet { --fc: var(--violet); }
 .fchip-x { border: 0; background: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 4px; }
 .fchip-x:hover { opacity: 1; }
-.fchip-ghost { padding-right: 11px; border: 1px dashed color-mix(in srgb, var(--fc) 55%, white); background: transparent; color: var(--fc); font-weight: 500; cursor: pointer; }
-.fchip-ghost:hover { background: color-mix(in srgb, var(--fc) 10%, white); border-color: var(--fc); }
+.fchip-ghost { position: relative; padding: 6px 12px; border: 0; background: transparent; color: var(--fc); font-weight: 500; cursor: pointer; }
+.fchip-ghost:hover { background: color-mix(in srgb, var(--fc) 10%, white); }
+.fchip-ghost::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: var(--fc); opacity: 0.55; transition: opacity 0.15s ease;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' rx='16' fill='none' stroke='%23000' stroke-width='2' stroke-dasharray='7 5'/%3E%3C/svg%3E");
+}
+.fchip-ghost:hover::before { opacity: 1; }
 .fchip-clear { margin-left: auto; border: 0; background: none; font: inherit; font-size: 12px; font-weight: 700; color: var(--new); cursor: pointer; }
 
 /* Begin Applying: running state + hover popup */

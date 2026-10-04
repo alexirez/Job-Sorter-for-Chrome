@@ -365,7 +365,7 @@
       chips.push({
         id: 'comp', tone: 'amber',
         label: s.compType === 'salary'
-          ? `$${formatCompact(s.salaryMin)}–${formatCompact(s.salaryMax)}`
+          ? `$${Math.round(s.salaryMin/1000)}k–${Math.round(s.salaryMax/1000)}k`
           : `$${Math.round(s.hourlyMin)}–${Math.round(s.hourlyMax)}/hr`,
         remove: () => editApplied((a) => {
           a.salaryMin = d.salaryMin; a.salaryMax = d.salaryMax;
